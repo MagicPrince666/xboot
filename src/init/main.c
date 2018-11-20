@@ -29,7 +29,11 @@
 #include <xboot.h>
 #include <init.h>
 #include <dma/dma.h>
+#include <pwm/pwm.h>
+#include <gpio/gpio.h>
 #include <shell/shell.h>
+#include <f1c100s-gpio.h>
+#include "usb.h"
 
 int xboot_main(int argc, char * argv[])
 {
@@ -56,11 +60,60 @@ int xboot_main(int argc, char * argv[])
 	/* Do auto boot */
 	do_autoboot();
 
+	/* Do initial pwm */	
+	struct pwm_t* pwm0 = search_pwm("pwm-f1c100s.0");
+
+	pwm_config(pwm0, 500000, 1000000, 1);
+	pwm_enable(pwm0);
+
+	struct pwm_t* pwm1 = search_pwm("pwm-f1c100s.1");
+	
+	pwm_config(pwm1, 1500000, 20000000, 1);
+	pwm_enable(pwm1);
+
+	gpio_set_cfg(F1C100S_GPIOE2,0x01);  //初始化端口功能
+	gpio_set_cfg(F1C100S_GPIOE3,0x01);
+	gpio_set_cfg(F1C100S_GPIOE4,0x01);
+	gpio_set_cfg(F1C100S_GPIOE5,0x01);
+	gpio_set_pull(F1C100S_GPIOE2,GPIO_PULL_NONE); 
+	gpio_set_pull(F1C100S_GPIOE3,GPIO_PULL_NONE); 
+	gpio_set_pull(F1C100S_GPIOE4,GPIO_PULL_NONE); 
+	gpio_set_pull(F1C100S_GPIOE5,GPIO_PULL_NONE);   
+	gpio_set_drv(F1C100S_GPIOE2,GPIO_DRV_WEAKER);
+	gpio_set_drv(F1C100S_GPIOE3,GPIO_DRV_WEAKER);
+	gpio_set_drv(F1C100S_GPIOE4,GPIO_DRV_WEAKER);
+	gpio_set_drv(F1C100S_GPIOE5,GPIO_DRV_WEAKER);
+	gpio_set_direction(F1C100S_GPIOE2,GPIO_DIRECTION_OUTPUT);
+	gpio_set_direction(F1C100S_GPIOE3,GPIO_DIRECTION_OUTPUT);
+	gpio_set_direction(F1C100S_GPIOE4,GPIO_DIRECTION_OUTPUT);
+	gpio_set_direction(F1C100S_GPIOE5,GPIO_DIRECTION_OUTPUT);
+	gpio_set_rate(F1C100S_GPIOE2,GPIO_RATE_FAST);
+	gpio_set_rate(F1C100S_GPIOE3,GPIO_RATE_FAST);
+	gpio_set_rate(F1C100S_GPIOE4,GPIO_RATE_FAST);
+	gpio_set_rate(F1C100S_GPIOE5,GPIO_RATE_FAST);
+
+	gpio_set_value(F1C100S_GPIOE2,1);
+	gpio_set_value(F1C100S_GPIOE3,1);
+	gpio_set_value(F1C100S_GPIOE4,0);
+	gpio_set_value(F1C100S_GPIOE5,1);
+
+	
+
+	usb_device_init(USB_TYPE_USB_COM);
+
 	/* Run loop */
 	while(1)
 	{
 		/* Run shell */
 		run_shell();
+		/*
+		gpio_set_value(GPIOE_2, 0);
+        gpio_set_value(GPIOE_5, 1);
+        mdelay(500);
+        gpio_set_value(GPIOE_2, 1);
+        gpio_set_value(GPIOE_5, 0);
+        mdelay(500);
+		*/
 	}
 
 	/* Do all exit calls */

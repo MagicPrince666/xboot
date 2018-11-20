@@ -5,8 +5,8 @@
 #
 # You must pass CROSS_COMPILE and PLATFORM variable.
 #
-CROSS_COMPILE	?=
-PLATFORM		?=
+CROSS_COMPILE	?=/media/thinkpad/a02d218d-7b5b-4186-8500-78e865983e75/f1c100s/gcc-linaro-5.3.1-2016.05-x86_64_arm-eabi/bin/arm-eabi-
+PLATFORM		?=arm32-f1c100s
 
 #
 # Get platform information about ARCH and MACH from PLATFORM variable.
