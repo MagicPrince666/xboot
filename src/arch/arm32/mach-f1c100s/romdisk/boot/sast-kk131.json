@@ -193,8 +193,8 @@
 	"pwm-f1c100s@0x01c21000": {
 		"clock-name": "link-pwm",
 		"channel": 0,
-		"pwm-gpio": 2,
-		"pwm-gpio-config": 3
+		"pwm-gpio": 140,
+		"pwm-gpio-config": 4
 	},
 
 	"pwm-f1c100s@0x01c21000": {
