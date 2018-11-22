@@ -6,6 +6,7 @@
 #include <gpio/gpio.h>
 #include <f1c100s-gpio.h>
 
+#define PS2_JOYPAD_ACK        gpio_get_value(F1C100S_GPIOA0)
 #define PS2_JOYPAD_DATA       gpio_get_value(F1C100S_GPIOE10)     //E10 MISO
 #define PS2_JOYPAD_CMND_1     gpio_set_value(F1C100S_GPIOE8,1)      //E9 CLK
 #define PS2_JOYPAD_ATT_1      gpio_set_value(F1C100S_GPIOE7,1)      //E8 MOSI

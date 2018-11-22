@@ -57,10 +57,10 @@ int xboot_main(int argc, char * argv[])
 	do_initcalls();
 
 	/* Do show logo */
-	do_showlogo();
+	//do_showlogo();
 
 	/* Do auto boot */
-	do_autoboot();
+	//do_autoboot();
 
 	/* Do initial pwm */	
 	struct pwm_t* pwm0 = search_pwm("pwm-f1c100s.0");
@@ -114,6 +114,8 @@ int xboot_main(int argc, char * argv[])
 	int cnt = 0;
 
 	u8_t key = 0;
+	u8_t l_lx,l_ly,l_rx,l_ry;
+	u8_t lx,ly,rx,ry;
 	PS2_Init();
 	PS2_SetInit();
 
@@ -130,7 +132,7 @@ int xboot_main(int argc, char * argv[])
 		}
 		
 		key = PS2_DataKey();
-		if(key!= 0)               
+		if(key != 0)               
 		{
 			printf("key = %d\r\n",key);
 			if(key == 11)
@@ -147,13 +149,33 @@ int xboot_main(int argc, char * argv[])
 				PS2_Vibration(0x00,0x00); 
 		}
 		
-/*		
-		printf("LX = %d\r\n",PS2_AnologData(PSS_LX));
-		printf("LY = %d\r\n",PS2_AnologData(PSS_LY));	
-		printf("RX = %d\r\n",PS2_AnologData(PSS_RX));
-		printf("RY = %d\r\n",PS2_AnologData(PSS_RY));
-*/
-		//mdelay(500);
+		lx = PS2_AnologData(PSS_LX);
+		ly = PS2_AnologData(PSS_LY);
+		rx = PS2_AnologData(PSS_RX);
+		ry = PS2_AnologData(PSS_RY);
+
+		if(l_lx != lx)
+		{
+			l_lx = lx;
+			printf("LX = %d\r\n",lx);
+		}
+		if(l_ly != ly)
+		{
+			l_ly = ly;
+			printf("LY = %d\r\n",ly);	
+		}
+		if(l_rx != rx)
+		{
+			l_rx = rx;
+			printf("RX = %d\r\n",rx);
+		}
+		if(l_ry != ry)
+		{
+			l_ry = ry;
+			printf("RY = %d\r\n",ry);
+		}
+
+		mdelay(500);
 
 /*
 		cnt ++;
