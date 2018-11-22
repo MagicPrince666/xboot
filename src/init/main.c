@@ -34,6 +34,7 @@
 #include <gpio/gpio.h>
 #include <shell/shell.h>
 #include <f1c100s-gpio.h>
+#include "pstwo.h"
 #include "usb.h"
 
 int xboot_main(int argc, char * argv[])
@@ -112,6 +113,10 @@ int xboot_main(int argc, char * argv[])
 	int recv_cnt = 0;
 	int cnt = 0;
 
+	u8_t key = 0;
+	PS2_Init();
+	PS2_SetInit();
+
 	/* Run loop */
 	while(1)
 	{
@@ -124,6 +129,33 @@ int xboot_main(int argc, char * argv[])
 			printf("%s\r\n",uart1_buf);
 		}
 		
+		key = PS2_DataKey();
+		if(key!= 0)               
+		{
+			printf("key = %d\r\n",key);
+			if(key == 11)
+			{
+				PS2_Vibration(0xFF,0x00);
+				mdelay(500);
+			}
+			else if(key == 12)
+			{
+				PS2_Vibration(0x00,0xFF); 
+				mdelay(500);
+			}
+			else
+				PS2_Vibration(0x00,0x00); 
+		}
+		
+/*		
+		printf("LX = %d\r\n",PS2_AnologData(PSS_LX));
+		printf("LY = %d\r\n",PS2_AnologData(PSS_LY));	
+		printf("RX = %d\r\n",PS2_AnologData(PSS_RX));
+		printf("RY = %d\r\n",PS2_AnologData(PSS_RY));
+*/
+		//mdelay(500);
+
+/*
 		cnt ++;
 		if(cnt > 10) cnt = 0;
 		pwm_config(pwm1, 1000000 + cnt*100000, 20000000, 1);
@@ -134,7 +166,7 @@ int xboot_main(int argc, char * argv[])
         gpio_set_value(F1C100S_GPIOE2, 1);
         gpio_set_value(F1C100S_GPIOE5, 0);
         mdelay(500);
-		
+*/		
 	}
 
 	free(uart1_buf);
