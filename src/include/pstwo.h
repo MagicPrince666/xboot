@@ -7,6 +7,7 @@
 #include <f1c100s-gpio.h>
 
 #define PS2_JOYPAD_ACK        gpio_get_value(F1C100S_GPIOA0)
+//#define PS2_JOYPAD_DATA       gpio_get_value(F1C100S_GPIOA0)
 #define PS2_JOYPAD_DATA       gpio_get_value(F1C100S_GPIOE10)     //E10 MISO
 #define PS2_JOYPAD_CMND_1     gpio_set_value(F1C100S_GPIOE8,1)      //E9 CLK
 #define PS2_JOYPAD_ATT_1      gpio_set_value(F1C100S_GPIOE7,1)      //E8 MOSI
@@ -16,7 +17,7 @@
 #define PS2_JOYPAD_ATT_0      gpio_set_value(F1C100S_GPIOE7,0)      //E8
 #define PS2_JOYPAD_CLOCK_0    gpio_set_value(F1C100S_GPIOE9,0)      //E7
 
-#define delay_us ndelay
+#define delay_us udelay
 
 //These are our button constants
 #define PSB_SELECT      1

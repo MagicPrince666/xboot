@@ -27,33 +27,44 @@ u16_t MASK[]={
 void PS2_Init(void)
 {
 	gpio_set_cfg(F1C100S_GPIOA0,0x01);
-	gpio_set_cfg(F1C100S_GPIOE10,0x01);  //初始化端口功能
+	gpio_set_cfg(F1C100S_GPIOE10,0x00); 
+	
+	gpio_set_pull(F1C100S_GPIOA0,GPIO_PULL_DOWN);
+	//gpio_set_pull(F1C100S_GPIOE10,GPIO_PULL_DOWN);
+
+	gpio_set_drv(F1C100S_GPIOA0,GPIO_DRV_WEAKER);
+	gpio_set_drv(F1C100S_GPIOE10,GPIO_DRV_WEAKER);
+
+	gpio_set_direction(F1C100S_GPIOA0,GPIO_DIRECTION_INPUT);
+	gpio_set_direction(F1C100S_GPIOE10,GPIO_DIRECTION_INPUT);
+
+	gpio_set_rate(F1C100S_GPIOA0,GPIO_RATE_FAST);
+	gpio_set_rate(F1C100S_GPIOE10,GPIO_RATE_FAST);
+
+	//struct gpiochip_t * PE_10 = search_gpiochip("gpio-f1c100s.138");
+
 	gpio_set_cfg(F1C100S_GPIOE9,0x01);
 	gpio_set_cfg(F1C100S_GPIOE8,0x01);
-	gpio_set_cfg(F1C100S_GPIOE7,0x01);
-	gpio_set_pull(F1C100S_GPIOE10,GPIO_PULL_DOWN); 
-	gpio_set_pull(F1C100S_GPIOA0,GPIO_PULL_DOWN);
+	gpio_set_cfg(F1C100S_GPIOE7,0x01);	 	
+
 	gpio_set_pull(F1C100S_GPIOE9,GPIO_PULL_UP); 
 	gpio_set_pull(F1C100S_GPIOE8,GPIO_PULL_DOWN); 
 	gpio_set_pull(F1C100S_GPIOE7,GPIO_PULL_UP);   
-	gpio_set_drv(F1C100S_GPIOE10,GPIO_DRV_WEAKER);
-	gpio_set_drv(F1C100S_GPIOA0,GPIO_DRV_WEAKER);
+
 	gpio_set_drv(F1C100S_GPIOE9,GPIO_DRV_WEAKER);
 	gpio_set_drv(F1C100S_GPIOE8,GPIO_DRV_WEAKER);
 	gpio_set_drv(F1C100S_GPIOE7,GPIO_DRV_WEAKER);
-	gpio_set_direction(F1C100S_GPIOA0,GPIO_DIRECTION_INPUT);
-	gpio_set_direction(F1C100S_GPIOE10,GPIO_DIRECTION_INPUT);
+
 	gpio_set_direction(F1C100S_GPIOE9,GPIO_DIRECTION_OUTPUT);
 	gpio_set_direction(F1C100S_GPIOE8,GPIO_DIRECTION_OUTPUT);
 	gpio_set_direction(F1C100S_GPIOE7,GPIO_DIRECTION_OUTPUT);
-	//gpio_set_rate(F1C100S_GPIOA0,GPIO_RATE_FAST);
-	//gpio_set_rate(F1C100S_GPIOE10,GPIO_RATE_FAST);
-	gpio_set_rate(F1C100S_GPIOE9,GPIO_RATE_FAST);
-	gpio_set_rate(F1C100S_GPIOE8,GPIO_RATE_FAST);
-	gpio_set_rate(F1C100S_GPIOE7,GPIO_RATE_FAST);
+	
+	gpio_set_rate(F1C100S_GPIOE9,GPIO_RATE_SLOW);
+	gpio_set_rate(F1C100S_GPIOE8,GPIO_RATE_SLOW);
+	gpio_set_rate(F1C100S_GPIOE7,GPIO_RATE_SLOW);
 
 	gpio_set_value(F1C100S_GPIOA0,0);
-	gpio_set_value(F1C100S_GPIOE10,0);
+	gpio_set_value(F1C100S_GPIOE10,1);
 	gpio_set_value(F1C100S_GPIOE9,1);
 	gpio_set_value(F1C100S_GPIOE8,0);
 	gpio_set_value(F1C100S_GPIOE7,1);										  
