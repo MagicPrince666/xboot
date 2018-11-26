@@ -60,12 +60,12 @@ static USB_DeviceDescriptor hid_posDesc =
 	0x00,
 	0x01
 };
-//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½â¼¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ãµï¿½ï¿½Ö¶Î£ï¿½ï¿½Ü¹ï¿½Îª8ï¿½ï¿½bitsï¿½ï¿½Ã¿ï¿½ï¿½bitï¿½ï¿½Ê¾Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
-    //ï¿½Ö±ï¿½ï¿½ï¿½ï¿½ctrlï¿½ï¿½ï¿½ï¿½ï¿½ï¿½GUIï¿½ï¿½ï¿½ï¿½ï¿½ï¿½8ï¿½ï¿½bitsï¿½ÕºÃ¹ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Ö½Ú£ï¿½ï¿½ï¿½Î»ï¿½Ú±ï¿½ï¿½ï¿½Äµï¿½Ò»ï¿½ï¿½ï¿½Ö½Ú¡ï¿½
-    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½bit-0ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½ctrlï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½Ý¸ï¿½Î»Îª1ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾ï¿½ï¿½ctrlï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â£ï¿½
-    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ctrlï¿½ï¿½Ã»ï¿½Ð°ï¿½ï¿½Â¡ï¿½ï¿½ï¿½ï¿½Î»ï¿½ï¿½ï¿½ï¿½bit-7ï¿½ï¿½Ê¾ï¿½ï¿½GUIï¿½ï¿½ï¿½Ä°ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¼ï¿½Ä¼ï¿½ï¿½ï¿½Î»ï¿½ï¿½
-    //ï¿½ï¿½Òªï¿½ï¿½ï¿½ï¿½HIDÐ­ï¿½ï¿½ï¿½Ð¹æ¶¨ï¿½ï¿½ï¿½ï¿½Í¾Ò³ï¿½ï¿½HID Usage Tablesï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê¾
-    //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ctrlï¿½ï¿½shiftï¿½ï¿½delï¿½ï¿½ï¿½ï¿½
+//ÏÂÃæÕâÕâ¼¸ÏîÃèÊöÁËÒ»¸öÊäÈëÓÃµÄ×Ö¶Î£¬×Ü¹²Îª8¸öbits£¬Ã¿¸öbit±íÊ¾Ò»¸ö°´¼ü
+    //·Ö±ð´Ó×óctrl¼üµ½ÓÒGUI¼ü¡£Õâ8¸öbits¸ÕºÃ¹¹³ÉÒ»¸ö×Ö½Ú£¬ËüÎ»ÓÚ±¨¸æµÄµÚÒ»¸ö×Ö½Ú¡£
+    //ËüµÄ×îµÍÎ»£¬¼´bit-0¶ÔÓ¦×Å×óctrl¼ü£¬Èç¹û·µ»ØµÄÊý¾Ý¸ÃÎ»Îª1£¬Ôò±íÊ¾×óctrl¼ü±»°´ÏÂ£¬
+    //·ñÔò£¬×óctrl¼üÃ»ÓÐ°´ÏÂ¡£×î¸ßÎ»£¬¼´bit-7±íÊ¾ÓÒGUI¼üµÄ°´ÏÂÇé¿ö¡£ÖÐ¼äµÄ¼¸¸öÎ»£¬
+    //ÐèÒª¸ù¾ÝHIDÐ­ÒéÖÐ¹æ¶¨µÄÓÃÍ¾Ò³±í£¨HID Usage Tables£©À´È·¶¨¡£ÕâÀïÍ¨³£ÓÃÀ´±íÊ¾
+    //ÌØÊâ¼ü£¬ÀýÈçctrl£¬shift£¬del¼üµÈ
 static u8 hid_keyboard_report[] = {
 	0x05, 0x01,
 	0x09, 0x06,
@@ -467,7 +467,7 @@ static void set_address(unsigned char addr)
     usbprint("set dev address: %x\r\n", addr);
     usb_device_set_ep0_state(EP0_IDLE);
     //usb_device_set_xfer_type(SET_ADDR);
-   // usbprint("read usb address: %x\n", GH_USB_get_FAddr());
+   // usbprint("read usb address: %x\r\n", GH_USB_get_FAddr());
 
 }
 
@@ -489,13 +489,13 @@ static void set_configuration(void)
 static void standard_setup_request(USB_DeviceRequest *req_data)
 {
    // usb_delay(10000);
-//				printf("setupdata[1]:0x%02x\n",setupdata[1]);
-//				printf("setupdata[2]:0x%02x\n",setupdata[2]);
-//				printf("setupdata[3]:0x%02x\n",setupdata[3]);
-//				printf("setupdata[4]:0x%02x\n",setupdata[4]);
-//				printf("setupdata[5]:0x%02x\n",setupdata[5]);
-//				printf("setupdata[6]:0x%02x\n",setupdata[6]);
-//				printf("setupdata[7]:0x%02x\n",setupdata[7]);
+//				printf("setupdata[1]:0x%02x\r\n",setupdata[1]);
+//				printf("setupdata[2]:0x%02x\r\n",setupdata[2]);
+//				printf("setupdata[3]:0x%02x\r\n",setupdata[3]);
+//				printf("setupdata[4]:0x%02x\r\n",setupdata[4]);
+//				printf("setupdata[5]:0x%02x\r\n",setupdata[5]);
+//				printf("setupdata[6]:0x%02x\r\n",setupdata[6]);
+//				printf("setupdata[7]:0x%02x\r\n",setupdata[7]);
     //bRequest        = setupdata[1];
 	unsigned char bRequest =  req_data->bRequest;
     if(bRequest==USB_REQ_GET_DESCRIPTOR)
@@ -514,7 +514,7 @@ static void standard_setup_request(USB_DeviceRequest *req_data)
     {
     	usbprint("get_configuration\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_GET_CONFIGURATION command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_GET_CONFIGURATION command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest==USB_REQ_SET_INTERFACE)
@@ -527,7 +527,7 @@ static void standard_setup_request(USB_DeviceRequest *req_data)
     else if(bRequest==USB_REQ_GET_INTERFACE)
     {
         //not support
-        usbprint("Error!! unsupprot USB_REQ_GET_INTERFACE command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_GET_INTERFACE command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest==USB_REQ_SET_ADDRESS)
@@ -541,20 +541,20 @@ static void standard_setup_request(USB_DeviceRequest *req_data)
     {
     	usbprint("set_Descriptor\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_SET_DESCRIPTOR command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_SET_DESCRIPTOR command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest==USB_REQ_SYNCH_FRAME)
     {
     	usbprint("sync frame\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_SYNCH_FRAME command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_SYNCH_FRAME command");
         usb_device_read_data_status_ep0(1);
     }
     else
     {
     	usbprint("other  req \r\n");
-        usbprint("Error!! received controller command:%08X.\r\n", bRequest);
+        usbprint("Error!! received controller command:%08X.", bRequest);
         usb_device_read_data_status_ep0(1);
         //other command process by controller
     }
@@ -564,7 +564,7 @@ static void class_setup_request(USB_DeviceRequest* req_data)
 {
 	unsigned char bRequest = req_data->bRequest;
 	//u32 des_length,data_tmp[26],data_flag;
-	//usbprint("[GK]Received class_setuptran command\n");
+	//usbprint("[GK]Received class_setuptran command\r\n");
    if(bRequest==HID_REQ_SET_REPORT)//HID Set report
    {
 	   usbprint("HID_REQ_SET_REPORT, host set device_report success!!!\r\n");

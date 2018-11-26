@@ -1,7 +1,7 @@
 /*
  * usb_phy.h
  *
- *  Created on: 2018ï¿½ï¿½10ï¿½ï¿½4ï¿½ï¿½
+ *  Created on: 2018Äê10ÔÂ4ÈÕ
  *      Author: lucy
  */
 
@@ -10,7 +10,7 @@
 #include "usb.h"
 
 //-----------------------------------------------------------------------
-//   ï¿½ï¿½Ð´ï¿½Ä´ï¿½ï¿½ï¿½, 8bit, 16bit, 32bit
+//   ¶ÁÐ´¼Ä´æÆ÷, 8bit, 16bit, 32bit
 //-----------------------------------------------------------------------
 
 #define  USBC_Readb(reg)	                    (*(volatile unsigned char *)(reg))
@@ -67,6 +67,8 @@
 #define  USBC_REG_clear_bit_l(bp, reg)	 	 	(USBC_Writel((USBC_Readl(reg) & (~ (1 << (bp)))) , (reg)))
 
 #define SW_UDC_EPNUMS 3
+
+#define SUNXI_SRAMC_BASE 0x01c00000
 //---------------------------------------------------------------
 //   reg base
 //---------------------------------------------------------------
@@ -78,6 +80,9 @@
 #define USBPHY_CLK_REG 		0x01c200CC
 #define USBPHY_CLK_RST_BIT 0
 #define USBPHY_CLK_GAT_BIT 1
+
+#define BUS_CLK_RST_REG	0x01c202c0 //Bus Clock Reset Register Bit24 : USB CLK RST
+#define BUS_RST_USB_BIT	24
 
 #define BUS_CLK_GATE0_REG	0x01c20060 //Bus Clock Gating Register Bit24 : USB CLK GATE 0: Mask 1 : Pass
 #define BUS_CLK_USB_BIT	24
@@ -165,6 +170,8 @@
 #define  USBC_REG_o_PHYBIST         0x0408
 #define  USBC_REG_o_PHYTUNE         0x040c
 
+#define  USBC_REG_o_CSR			0x0410
+
 #define USBC_REG_o_PMU_IRQ	 0x0800
 
 //-----------------------------------------------------------------------
@@ -241,7 +248,8 @@
 #define  USBC_REG_PHYCTL(usbc_base_addr)	        ((usbc_base_addr) + USBC_REG_o_PHYCTL		)
 #define  USBC_REG_PHYBIST(usbc_base_addr)	        ((usbc_base_addr) + USBC_REG_o_PHYBIST		)
 #define  USBC_REG_PHYTUNE(usbc_base_addr)           ((usbc_base_addr) + USBC_REG_o_PHYTUNE		)
-
+#define  USBC_REG_PMU_IRQ(usbc_base_addr)           ((usbc_base_addr) + USBC_REG_o_PMU_IRQ		)
+#define  USBC_REG_CSR(usbc_base_addr)           ((usbc_base_addr) + USBC_REG_o_CSR)
 //-----------------------------------------------------------------------
 //   bit position
 //-----------------------------------------------------------------------
@@ -495,12 +503,12 @@
 #define SUNXI_EHCI_AHB_INCRX_ALIGN_EN	(1 << 8)
 #define SUNXI_EHCI_ULPI_BYPASS_EN	(1 << 0)
 //-----------------------------------------------------------------------
-//   ï¿½Ô¶ï¿½ï¿½ï¿½
+//   ×Ô¶¨Òå
 //-----------------------------------------------------------------------
 
-/* usbï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½ */
+/* usb×ÊÔ´ÃèÊö */
 #define  USBC_MAX_CTL_NUM                   1
-#define  USBC_MAX_EP_NUM                    3   //ep0~2, epï¿½Ä¸ï¿½ï¿½ï¿½
+#define  USBC_MAX_EP_NUM                    3   //ep0~2, epµÄ¸öÊý
 #define  USBC_MAX_FIFO_SIZE                 (2 * 1024)
 
 /* usb OTG mode */
@@ -597,12 +605,12 @@
 
 
 //---------------------------------------------------------------
-//  bspï¿½ï¿½ï¿½
+//  bspÈë¿Ú
 //---------------------------------------------------------------
-/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ */
+/* ¿ØÖÆÆ÷ÐÅÏ¢ */
 typedef struct tag_usbc_info{
-    u32 num;      /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ */
-    u32 base;     /* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö· */
+    u32 num;      /* ¿ØÖÆÆ÷±àºÅ */
+    u32 base;     /* ¿ØÖÆÆ÷»ùÖ· */
 }usbc_info_t;
 
 typedef struct tag_bsp_usbc{
@@ -655,4 +663,7 @@ u32 USBC_Dev_IsReadDataReady(u32 ep_type);
 u32 USBC_ReadLenFromFifo(u32 ep_type);
 int USBC_Dev_ConfigEp(u32 ts_type, u32 ep_type, u32 is_double_fifo, u32 ep_MaxPkt);
 void USBC_Clear_Feature_HALT(u32 ep_type);
+void USBC_CoreRegDump(void);
+void USBC_PhyConfig(void);
+void USBC_ConfigFIFO_Base(void);
 #endif /* DRIVER_INCLUDE_USB_PHY_H_ */

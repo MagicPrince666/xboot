@@ -63,6 +63,7 @@ int xboot_main(int argc, char * argv[])
 	do_autoboot();
 
 	/* Do initial pwm */	
+/*
 	struct pwm_t* pwm0 = search_pwm("pwm-f1c100s.0");
 
 	pwm_config(pwm0, 500000, 1000000, 1);
@@ -78,7 +79,7 @@ int xboot_main(int argc, char * argv[])
 	uart_set(uart1,115200,8,0,1);
 	const char *str = "hello uart1\r\n";
 	uart_write(uart1,str,sizeof(str));
-
+*/
 	gpio_set_cfg(F1C100S_GPIOE2,0x01);  //初始化端口功能
 	gpio_set_cfg(F1C100S_GPIOE3,0x01);
 	gpio_set_cfg(F1C100S_GPIOE4,0x01);
@@ -109,6 +110,7 @@ int xboot_main(int argc, char * argv[])
 
 	usb_device_init(USB_TYPE_USB_COM);
 
+/*
 	u8_t * uart1_buf = malloc(1024);
 	int recv_cnt = 0;
 	int cnt = 0;
@@ -119,12 +121,13 @@ int xboot_main(int argc, char * argv[])
 	int speed = 0;
 	PS2_Init();
 	PS2_SetInit();
-
+*/
 	/* Run loop */
 	while(1)
 	{
 		/* Run shell */
-		//run_shell();
+		run_shell();
+		/*
 		recv_cnt = uart_read(uart1,uart1_buf,1024);
 		if(recv_cnt > 0)
 		{
@@ -175,7 +178,7 @@ int xboot_main(int argc, char * argv[])
 			speed = (ry -128)/128 * 1000000;
 			gpio_set_value(F1C100S_GPIOE3,0);
 			gpio_set_value(F1C100S_GPIOE4,1);
-			pwm_config(pwm0, 500000, 1000000, 1);
+			pwm_config(pwm0, speed, 1000000, 1);
 		}
 		else
 		{
@@ -206,22 +209,10 @@ int xboot_main(int argc, char * argv[])
 		}
 
 		mdelay(100);
-
-/*
-		cnt ++;
-		if(cnt > 10) cnt = 0;
-		pwm_config(pwm1, 1000000 + cnt*100000, 20000000, 1);
-		gpio_set_value(F1C100S_GPIOE2, 0);
-        gpio_set_value(F1C100S_GPIOE5, 1);/
-		//uart_write(uart1,str,sizeof(str));
-        mdelay(500);
-        gpio_set_value(F1C100S_GPIOE2, 1);
-        gpio_set_value(F1C100S_GPIOE5, 0);
-        mdelay(500);
-*/		
+		*/
 	}
 
-	free(uart1_buf);
+	//free(uart1_buf);
 	/* Do all exit calls */
 	do_exitcalls();
 

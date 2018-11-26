@@ -44,5 +44,5 @@ void usb_device_set_xfer_type(enum usb_xfer_type_req type);
 void usb_config_ep_out(int epidx,int maxpack,int type);
 void usb_config_ep_in(int epidx,int maxpack,int type);
 void usb_device_clear_ep_halt(int epaddr);
-
+void usb_reg_debugdump(void);
 #endif /* DRIVER_INCLUDE_USB_DEV_H_ */

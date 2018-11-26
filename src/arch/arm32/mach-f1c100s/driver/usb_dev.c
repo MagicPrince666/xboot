@@ -2,8 +2,6 @@
 #include "irq_misc.h"
 #include "usb_phy.h"
 #include "usb_dev.h"
-#include <xboot.h>
-
 static unsigned char current_usb_type = USB_TYPE_DISCONNECT;
 unsigned char current_speed = USB_SPEED_UNKNOWN;
 unsigned int usb_connect = 0;
@@ -72,7 +70,7 @@ int usb_device_write_data(int ep,unsigned char * databuf,int len)
 		USBC_SelectActiveEp(ep);
 		while(length > pack_len)
 		{
-			while((USBC_Dev_IsWriteDataReady(USBC_EP_TYPE_TX))&&(--Timeout));//ï¿½È´ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ö¾
+			while((USBC_Dev_IsWriteDataReady(USBC_EP_TYPE_TX))&&(--Timeout));//µÈ´ýÇå³ýÐ´±êÖ¾
 			USBC_WritePacket(fifo, pack_len, databuf + data_pos);
 			USBC_Dev_WriteDataStatus(USBC_EP_TYPE_TX,1);
 			data_pos += pack_len;
@@ -84,7 +82,7 @@ int usb_device_write_data(int ep,unsigned char * databuf,int len)
 			}
 			Timeout = 10000000;
 		}
-		while((USBC_Dev_IsWriteDataReady(USBC_EP_TYPE_TX))&&(Timeout--));//ï¿½È´ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½Ö¾
+		while((USBC_Dev_IsWriteDataReady(USBC_EP_TYPE_TX))&&(Timeout--));//µÈ´ýÇå³ýÐ´±êÖ¾
 		USBC_WritePacket(fifo, length, databuf + data_pos);
 		USBC_Dev_WriteDataStatus(USBC_EP_TYPE_TX,1);
 		return 0;
@@ -98,7 +96,7 @@ int usb_device_write_data(int ep,unsigned char * databuf,int len)
 
 int usb_device_read_data(int ep,unsigned char * databuf,int len)
 {
-	return 0;
+
 }
 
 void usb_device_clear_setup_end(void)
@@ -131,11 +129,13 @@ int usb_dev_bsp_init(void)
 //#endif
 
 	//USBC_EnhanceSignal(sunxi_udc_io->usb_bsp_hdle); //no use
-
+	USBC_PhyConfig();
+	USBC_ConfigFIFO_Base();
 	USBC_EnableDpDmPullUp();
 	USBC_EnableIdPullUp();
 	USBC_ForceId(USBC_ID_TYPE_DEVICE);
 	USBC_ForceVbusValid( USBC_VBUS_TYPE_HIGH);
+
 
 	USBC_SelectBus(USBC_IO_TYPE_PIO, 0, 0);
 
@@ -211,7 +211,7 @@ static void cfg_udc_command(enum sunxi_udc_cmd_e cmd)
 
 static void sunxi_udc_disable(void)
 {
-	//usbprint("sunxi_udc_disable\r\n");
+	usbprint("sunxi_udc_disable\r\n");
 	/* Disable all interrupts */
 	USBC_INT_DisableUsbMiscAll();
 	USBC_INT_DisableEpAll(USBC_EP_TYPE_RX);
@@ -229,10 +229,10 @@ static void sunxi_udc_disable(void)
 
 void usb_handle_ep0(void)
 {
-	//printf("usb ep 0 interupt!!\r\n");
+	//printf("usb ep 0 interupt!!\r\r\n");
 	/* We make the assumption that sunxi_udc_UDC_IN_CSR1_REG equal to
 		 * sunxi_udc_UDC_EP0_CSR_REG when index is zero */
-	//int ep0csr;
+	int ep0csr;
 	int len;
 	unsigned char databuf[8];
 	USBC_SelectActiveEp(0);
@@ -291,7 +291,7 @@ void usb_handle_ep0(void)
 					{
 						usb_ep0_state = EP0_OUT_DATA_PHASE;
 					}
-//					usbprint("d[0] :0x%02x    data[1] :0x%02x    data[2] :0x%02x    data[3] :0x%02x    data[4] :0x%02x    data[5] :0x%02x    data[6] :0x%02x    data[7] :0x%02x.\n",
+//					usbprint("d[0] :0x%02x    data[1] :0x%02x    data[2] :0x%02x    data[3] :0x%02x    data[4] :0x%02x    data[5] :0x%02x    data[6] :0x%02x    data[7] :0x%02x.\r\n",
 //							databuf[0],databuf[1],databuf[2],databuf[3],databuf[4],databuf[5],
 //							databuf[6],databuf[7]);
 					if(current_usb_type == USB_TYPE_USB_HID)
@@ -359,7 +359,7 @@ void usb_handle_ep0(void)
 			if(usb_xfer_type == SET_ADDR)//no use
 			{
 				//USBC_SelectActiveEp(0);
-				//usbprint("usb_xfer_type:SET_ADDR0x%02x\n",usb_addr);
+				//usbprint("usb_xfer_type:SET_ADDR0x%02x\r\n",usb_addr);
 
 				//USBC_Dev_Ctrl_ClearSetupEnd();
 				//USBC_Dev_SetAddress(usb_addr);
@@ -433,7 +433,7 @@ void usb_handle_epn_out(int ep)
 			usb_cdc_out_ep_callback(usb_rx_buf,usb_rx_buf_len);
 		}
 		USBC_Dev_ReadDataStatus(USBC_EP_TYPE_RX, 1);
-//		usbprint("rx ep(%d) data ready data[0]:%d!\n", idx,usb_rx_buf[0]);
+//		usbprint("rx ep(%d) data ready data[0]:%d!\r\n", idx,usb_rx_buf[0]);
 //		usb_device_write_data_ep_pack(idx,usb_rx_buf,usb_rx_buf_len);
 
 	}
@@ -459,9 +459,9 @@ void usb_irq_handle(int arg)
 		usb_irq = filtrate_irq_misc(usb_irq);
 		usbprint("_______________________________\r\n");
 		usbprint("\r\nirq: usb_irq=%02x, tx_irq=%02x, rx_irq=%02x, dma_irq:%x\r\n", usb_irq, tx_irq, rx_irq, dma_irq);
-		//usbprint(">usb addr:0x%02x\n",GH_USB_get_FAddr());
-		//usbprint(">>usb frame:%d\n",GH_USB_get_Frame());
-		//usbprint(">>>Time:%d\n",gkosGetTicks());
+		//usbprint(">usb addr:0x%02x\r\n",GH_USB_get_FAddr());
+		//usbprint(">>usb frame:%d\r\n",GH_USB_get_Frame());
+		//usbprint(">>>Time:%d\r\n",gkosGetTicks());
 		/*
 		 * Now, handle interrupts. There's two types :
 		 * - Reset, Resume, Suspend coming -> usb_int_reg
@@ -677,7 +677,7 @@ int usb_device_init(unsigned char type)
 		}
 		//usbhid_usb_phy_init(41);
 		sunxi_udc_disable();
-		//GD_USB_Intr_Set_CallBack(usb_irq_handle);
+	//	GD_USB_Intr_Set_CallBack(usb_irq_handle);
 		retval = request_irq(IRQ_USBOTG, usb_irq_handle,0);
 		if (retval != 0)
 		{
@@ -692,4 +692,8 @@ int usb_device_init(unsigned char type)
 		return retval;
 	}
 	return retval;
+}
+void usb_reg_debugdump(void)
+{
+	USBC_CoreRegDump();
 }

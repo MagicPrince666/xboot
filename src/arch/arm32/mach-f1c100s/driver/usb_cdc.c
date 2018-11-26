@@ -492,13 +492,13 @@ static void set_configuration(void)
 static void standard_setup_request(USB_DeviceRequest *req_data)
 {
    // usb_delay(10000);
-//				printf("setupdata[1]:0x%02x\n",setupdata[1]);
-//				printf("setupdata[2]:0x%02x\n",setupdata[2]);
-//				printf("setupdata[3]:0x%02x\n",setupdata[3]);
-//				printf("setupdata[4]:0x%02x\n",setupdata[4]);
-//				printf("setupdata[5]:0x%02x\n",setupdata[5]);
-//				printf("setupdata[6]:0x%02x\n",setupdata[6]);
-//				printf("setupdata[7]:0x%02x\n",setupdata[7]);
+//				printf("setupdata[1]:0x%02x\r\n",setupdata[1]);
+//				printf("setupdata[2]:0x%02x\r\n",setupdata[2]);
+//				printf("setupdata[3]:0x%02x\r\n",setupdata[3]);
+//				printf("setupdata[4]:0x%02x\r\n",setupdata[4]);
+//				printf("setupdata[5]:0x%02x\r\n",setupdata[5]);
+//				printf("setupdata[6]:0x%02x\r\n",setupdata[6]);
+//				printf("setupdata[7]:0x%02x\r\n",setupdata[7]);
     //bRequest        = setupdata[1];
 	unsigned char bRequest =  req_data->bRequest;
     if(bRequest==USB_REQ_GET_DESCRIPTOR)
@@ -517,21 +517,21 @@ static void standard_setup_request(USB_DeviceRequest *req_data)
     {
     	usbprint("get_configuration\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_GET_CONFIGURATION command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_GET_CONFIGURATION command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest==USB_REQ_SET_INTERFACE)
     {
     	usbprint("set_interface\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_SET_INTERFACE command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_SET_INTERFACE command");
         usb_device_read_data_status_ep0(1);
 
     }
     else if(bRequest==USB_REQ_GET_INTERFACE)
     {
         //not support
-        usbprint("Error!! unsupprot USB_REQ_GET_INTERFACE command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_GET_INTERFACE command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest==USB_REQ_SET_ADDRESS)
@@ -545,14 +545,14 @@ static void standard_setup_request(USB_DeviceRequest *req_data)
     {
     	usbprint("set_Descriptor\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_SET_DESCRIPTOR command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_SET_DESCRIPTOR command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest==USB_REQ_SYNCH_FRAME)
     {
     	usbprint("sync frame\r\n");
         //not support
-        usbprint("Error!! unsupprot USB_REQ_SYNCH_FRAME command\r\n");
+        usbprint("Error!! unsupprot USB_REQ_SYNCH_FRAME command");
         usb_device_read_data_status_ep0(1);
     }
     else if(bRequest == USB_REQ_CLEAR_FEATURE)

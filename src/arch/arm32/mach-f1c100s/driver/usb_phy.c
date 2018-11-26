@@ -19,8 +19,13 @@ void USBC_EnableDpDmPullUp(void)
 	/* vbus, id, dpdm, these bit is set 1 to clear, so we clear these bit when operate other bits */
 	reg_val = USBC_Readl(USBC_REG_ISCR(USBC0_BASE));
 	reg_val |= (1 << USBC_BP_ISCR_DPDM_PULLUP_EN);
+
+	reg_val |= 3<<USBC_BP_ISCR_VBUS_VALID_SRC;
+
 	reg_val = USBC_WakeUp_ClearChangeDetect(reg_val);
 	USBC_Writel(reg_val, USBC_REG_ISCR(USBC0_BASE));
+
+
 	//USBC_REG_set_bit_l(USBC_BP_ISCR_DPDM_PULLUP_EN,USBC_REG_ISCR(USBC0_BASE));//Pull up dp dm
 }
 
@@ -175,65 +180,89 @@ void USBC_SelectBus(u32 io_type, u32 ep_type, u32 ep_index)
 
 	USBC_Writeb(reg_val, USBC_REG_VEND0(USBC0_BASE));
 }
+static void usb_phy_write(int addr, int data, int len)
+{
+	int j = 0, usbc_bit = 0;
+	void *dest = (void *)USBC_REG_CSR(USBC0_BASE);
+
+//#ifdef CONFIG_MACH_SUN8I_A33
+//	/* CSR needs to be explicitly initialized to 0 on A33 */
+//	writel(0, dest);
+//#endif
+
+	usbc_bit = 1 << (0 * 2);
+	for (j = 0; j < len; j++)
+	{
+		/* set the bit address to be written */
+		USBC_ClrBit_Mask_l(dest, 0xff << 8);
+		USBC_SetBit_Mask_l(dest, (addr + j) << 8);
+
+		USBC_ClrBit_Mask_l(dest, usbc_bit);
+		/* set data bit */
+		if (data & 0x1)
+			USBC_SetBit_Mask_l(dest, 1 << 7);
+		else
+			USBC_ClrBit_Mask_l(dest, 1 << 7);
+
+		USBC_SetBit_Mask_l(dest, usbc_bit);
+
+		USBC_ClrBit_Mask_l(dest, usbc_bit);
+
+		data >>= 1;
+	}
+}
+void USBC_PhyConfig(void)
+{
+	/* The following comments are machine
+	 * translated from Chinese, you have been warned!
+	 */
+
+	/* Regulation 45 ohms */
+	//if (phy->id == 0)
+		usb_phy_write( 0x0c, 0x01, 1);
+
+	/* adjust PHY's magnitude and rate */
+	usb_phy_write(0x20, 0x14, 5);
+
+	/* threshold adjustment disconnect */
+#if defined CONFIG_MACH_SUN5I || defined CONFIG_MACH_SUN7I
+	usb_phy_write(0x2a, 2, 2);
+#else
+	usb_phy_write( 0x2a, 3, 2);
+#endif
+
+	return;
+}
+void USBC_ConfigFIFO_Base(void)
+{
+	u32 reg_value;
+
+	/* config usb fifo, 8kb mode */
+	reg_value = USBC_Readl(SUNXI_SRAMC_BASE + 0x04);
+	reg_value &= ~(0x03 << 0);
+	reg_value |= (1 << 0);
+	USBC_Writel(reg_value, SUNXI_SRAMC_BASE + 0x04);
+}
 
 u32  usb_phy_open_clock(void)
 {
+	volatile int i;
+
 	usbprint("open_usb_clock\r\n");
-	//USBC_REG_clear_bit_l(USBPHY_CLK_RST_BIT, USBPHY_CLK_REG);
+
 	USBC_REG_set_bit_l(USBPHY_CLK_GAT_BIT, USBPHY_CLK_REG);
+   USBC_REG_set_bit_l(USBPHY_CLK_RST_BIT, USBPHY_CLK_REG);
+
 	USBC_REG_set_bit_l(BUS_CLK_USB_BIT,BUS_CLK_GATE0_REG);
-/*
-	//if (sunxi_udc_io->ahb_otg && sunxi_udc_io->mod_usbphy && !sunxi_udc_io->clk_is_open)
-	if(!is_usb_clock_en)
-	{
-		if (clk_prepare_enable(sunxi_udc_io->ahb_otg))
-		{
-			usbprint("ERR:try to prepare_enable sunxi_udc_io->mod_usbphy failed!\n");
-		}
-
-		udelay(10);
-
-		if (clk_prepare_enable(sunxi_udc_io->mod_usbphy)) {
-			usbprint("ERR:try to prepare_enable sunxi_udc_io->mod_usbphy failed!\n");
-		}
-
-		udelay(10);
-
-		is_usb_clock_en = 1;
-	} else
-	{
-		usbprint("ERR:usb clock open err!\n");
-	}
-
-//	UsbPhyInit(0);
-//#if defined (CONFIG_ARCH_SUN50I)
-//	otg and hci0 Controller Shared phy in SUN50I
-//	USBC_SelectPhyToDevice(sunxi_udc_io->usb_vbase);
-//#endif*/
-
+	USBC_REG_set_bit_l(BUS_RST_USB_BIT,BUS_CLK_RST_REG);
+    //USBC_Writel(0x0043031a,USBC_REG_PMU_IRQ(USBC0_BASE));
 	return 0;
 }
 
 u32 close_usb_clock()
 {
-	usbprint("close_usb_clock\n");
+	usbprint("close_usb_clock\r\n");
 
-//	if (is_usb_clock_en)
-//	{
-//		is_usb_clock_en = 0;
-//
-//		clk_disable_unprepare(sunxi_udc_io->mod_usbphy);
-//
-//		clk_disable_unprepare(sunxi_udc_io->ahb_otg);
-//		udelay(10);
-//
-//	}
-//	else
-//	{
-//		usbprint("ERR:usb clock open err!\n");
-//	}
-
-//	UsbPhyInit(0);
 
 	return 0;
 }
@@ -1672,4 +1701,24 @@ void USBC_Clear_Feature_HALT(u32 ep_type)
 		default:
 			break;
 	}
+}
+void USBC_CoreRegDump(void)
+{
+	usbprint("\r\n------------usb deugdump-----------\r\n");
+	usbprint("USBC_REG_ISCR:0x%08x\r\n",USBC_Readl(USBC_REG_ISCR(USBC0_BASE)));
+	usbprint("USBC_REG_PHYCTL:0x%08x\r\n",USBC_Readl(USBC_REG_PHYCTL(USBC0_BASE)));
+	usbprint("USBC_REG_PHYBIST:0x%08x\r\n",USBC_Readl(USBC_REG_PHYBIST(USBC0_BASE)));
+	usbprint("USBC_REG_PHYTUNE:0x%08x\r\n",USBC_Readl(USBC_REG_PHYTUNE(USBC0_BASE)));
+	usbprint("USBC_REG_PMU_IRQ:0x%08x\r\n",USBC_Readl(USBC_REG_PMU_IRQ(USBC0_BASE)));
+	usbprint("USBPHY_CLK_REG:0x%08x\r\n",USBC_Readl(USBPHY_CLK_REG));
+	usbprint("BUS_CLK_GATE0_REG:0x%08x\r\n",USBC_Readl(BUS_CLK_GATE0_REG));
+	usbprint("BUS_CLK_RST_REG:0x%08x\r\n",USBC_Readl(BUS_CLK_RST_REG));
+	usbprint("USBC_REG_CSR:0x%08x\r\n", USBC_Readl(USBC_REG_CSR(USBC0_BASE)));
+	usbprint("USBC_REG_VEND0:0x%02x\r\n", USBC_Readb(USBC_REG_VEND0(USBC0_BASE)));
+	usbprint("USBC_REG_FADDR:0x%02x\r\n",USBC_Readb(USBC_REG_FADDR(USBC0_BASE)));
+	usbprint("USBC_REG_PCTL:0x%02x\r\n",USBC_Readb(USBC_REG_PCTL(USBC0_BASE)));
+	usbprint("USBC_REG_INTUSBE:0x%04x\r\n",USBC_Readw(USBC_REG_INTUSBE(USBC0_BASE)));
+	usbprint("USBC_REG_INTRxE:0x%04x\r\n",USBC_Readw(USBC_REG_INTRxE(USBC0_BASE)));
+	usbprint("USBC_REG_INTTxE:0x%04x\r\n",USBC_Readw(USBC_REG_INTTxE(USBC0_BASE)));
+	usbprint("\r\n----------------------------------------------\r\n");
 }
