@@ -27,8 +27,8 @@
  */
 
 #include <xboot.h>
-#include <xboot/module.h>
 #include <shell/ctrlc.h>
+#include <xboot/module.h>
 
 int ctrlc(void)
 {
@@ -38,6 +38,10 @@ int ctrlc(void)
 	{
 		if(ch == 0x3)
 			return 1;
+	}
+	else
+	{
+		task_yield();
 	}
 	return 0;
 }

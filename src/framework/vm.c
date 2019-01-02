@@ -27,24 +27,20 @@
  */
 
 #include <xfs/xfs.h>
-#include <shell/readline.h>
 #include <framework/luahelper.h>
-#include <framework/lang/l-debugger.h>
 #include <framework/lang/l-class.h>
 #include <framework/event/l-event.h>
 #include <framework/event/l-event-dispatcher.h>
+#include <framework/codec/l-base64.h>
+#include <framework/codec/l-json.h>
 #include <framework/stopwatch/l-stopwatch.h>
-#include <framework/base64/l-base64.h>
 #include <framework/display/l-display.h>
 #include <framework/hardware/l-hardware.h>
 #include <framework/vm.h>
 
-extern int luaopen_cjson_safe(lua_State *);
-
 static void luaopen_glblibs(lua_State * L)
 {
 	const luaL_Reg glblibs[] = {
-		{ "Debugger",				luaopen_debugger },
 		{ "Class",					luaopen_class },
 		{ "Event",					luaopen_event },
 		{ "EventDispatcher",		luaopen_event_dispatcher },
@@ -62,8 +58,8 @@ static void luaopen_glblibs(lua_State * L)
 static void luaopen_prelibs(lua_State * L)
 {
 	const luaL_Reg prelibs[] = {
-		{ "builtin.json",			luaopen_cjson_safe },
-		{ "builtin.base64",			luaopen_base64 },
+		{ "codec.base64",			luaopen_base64 },
+		{ "codec.json",				luaopen_cjson_safe },
 
 		{ "builtin.stopwatch",		luaopen_stopwatch },
 		{ "builtin.matrix",			luaopen_matrix },
@@ -113,11 +109,53 @@ static void luaopen_prelibs(lua_State * L)
 	}
 }
 
+static const char boot_lua[] = X(
+	Base64 = require "codec.base64"
+	Json = require "codec.json"
+
+	Stopwatch = require "builtin.stopwatch"
+	Matrix = require "builtin.matrix"
+	Easing = require "builtin.easing"
+	Object = require "builtin.object"
+	Pattern = require "builtin.pattern"
+	Texture = require "builtin.texture"
+	Ninepatch = require "builtin.ninepatch"
+	Shape = require "builtin.shape"
+	Font = require "builtin.font"
+	Display = require "builtin.display"
+
+	DisplayObject = require "xboot.display.DisplayObject"
+	DisplayImage = require "xboot.display.DisplayImage"
+	DisplayImageMask = require "xboot.display.DisplayImageMask"
+	DisplayNinepatch = require "xboot.display.DisplayNinepatch"
+	DisplayShape = require "xboot.display.DisplayShape"
+	DisplayText = require "xboot.display.DisplayText"
+
+	Assets = require "xboot.core.Assets"
+	TexturePacker = require "xboot.core.TexturePacker"
+	Stage = require "xboot.core.Stage"
+
+	Timer = require "xboot.timer.Timer"
+	TimerManager = require "xboot.timer.TimerManager"
+
+	Widget = {
+		Button = require "xboot.widget.Button",
+		CheckBox = require "xboot.widget.CheckBox",
+		RadioButton = require "xboot.widget.RadioButton",
+		Stepper = require "xboot.widget.Stepper",
+		Slider = require "xboot.widget.Slider",
+	}
+
+	assets = Assets.new()
+	timermanager = TimerManager.new()
+	require("main")
+);
+
 static int luaopen_boot(lua_State * L)
 {
-	if(luaL_loadfile(L, "/framework/xboot/boot.lua") == LUA_OK)
-		lua_call(L, 0, 1);
-	return 1;
+	if(luaL_loadbuffer(L, boot_lua, sizeof(boot_lua)-1, "Boot.lua") == LUA_OK)
+		lua_call(L, 0, 0);
+	return 0;
 }
 
 struct __reader_data_t
@@ -144,7 +182,7 @@ static const char * __reader(lua_State * L, void * data, size_t * size)
 
 static int __loadfile(lua_State * L)
 {
-	struct xfs_context_t * ctx = luahelper_runtime(L)->__xfs_ctx;
+	struct xfs_context_t * ctx = ((struct vmctx_t *)luahelper_vmctx(L))->xfs;
 	const char * filename = luaL_checkstring(L, 1);
 	struct __reader_data_t * rd;
 
@@ -173,7 +211,7 @@ static int __loadfile(lua_State * L)
 
 static int l_search_package_lua(lua_State * L)
 {
-	struct xfs_context_t * ctx = luahelper_runtime(L)->__xfs_ctx;
+	struct xfs_context_t * ctx = ((struct vmctx_t *)luahelper_vmctx(L))->xfs;
 	const char * filename = lua_tostring(L, -1);
 	char * buf;
 	size_t len, i;
@@ -223,20 +261,8 @@ static int l_xboot_uniqueid(lua_State * L)
 	return 1;
 }
 
-static int l_xboot_readline(lua_State * L)
-{
-	char * p = readline(luaL_optstring(L, 1, NULL));
-	lua_pushstring(L, p);
-	free(p);
-	return 1;
-}
-
 static int pmain(lua_State * L)
 {
-	int argc = (int)lua_tointeger(L, 1);
-	char ** argv = (char **)lua_touserdata(L, 2);
-	int i;
-
 	luaL_openlibs(L);
 	luaopen_glblibs(L);
 	luaopen_prelibs(L);
@@ -257,19 +283,9 @@ static int pmain(lua_State * L)
 	lua_setfield(L, -2, "version");
 	lua_pushcfunction(L, l_xboot_uniqueid);
 	lua_setfield(L, -2, "uniqueid");
-	lua_pushcfunction(L, l_xboot_readline);
-	lua_setfield(L, -2, "readline");
-	lua_createtable(L, argc, 0);
-	for(i = 0; i < argc; i++)
-	{
-		lua_pushstring(L, argv[i]);
-		lua_rawseti(L, -2, i);
-	}
-	lua_setfield(L, -2, "arg");
-	lua_pop(L, 1);
 
 	luaopen_boot(L);
-	return 1;
+	return 0;
 }
 
 static void * l_alloc(void * ud, void * ptr, size_t osize, size_t nsize)
@@ -299,30 +315,80 @@ static lua_State * l_newstate(void * ud)
 	return L;
 }
 
-int vmexec(int argc, char ** argv)
+static struct vmctx_t * vmctx_alloc(const char * path, const char * fb)
 {
-	struct runtime_t rt, *r;
-	lua_State * L;
-	int status = LUA_ERRRUN, result;
+	struct framebuffer_t * fbdev = fb ? search_framebuffer(fb) : search_first_framebuffer();
+	struct vmctx_t * ctx;
 
-	runtime_create_save(&rt, argv[0], &r);
-	L = l_newstate(&rt);
+	if(!fbdev)
+		return NULL;
+
+	if(!is_absolute_path(path))
+		return NULL;
+
+	ctx = malloc(sizeof(struct vmctx_t));
+	if(!ctx)
+		return NULL;
+
+	ctx->xfs = xfs_alloc(path);
+	ctx->fb = fbdev;
+	ctx->cs = cairo_xboot_surface_create(ctx->fb, NULL);
+	ctx->cr = cairo_create(ctx->cs);
+
+	return ctx;
+}
+
+static void vmctx_free(struct vmctx_t * ctx)
+{
+	if(!ctx)
+		return;
+
+	xfs_free(ctx->xfs);
+	cairo_destroy(ctx->cr);
+	cairo_surface_destroy(ctx->cs);
+
+	free(ctx);
+}
+
+static void vm_task(struct task_t * task, void * data)
+{
+	struct vmctx_t * ctx = (struct vmctx_t *)data;
+	lua_State * L;
+
+	L = l_newstate(ctx);
 	if(L)
 	{
 		lua_pushcfunction(L, &pmain);
-		lua_pushinteger(L, argc);
-		lua_pushlightuserdata(L, argv);
-		status = luahelper_pcall(L, 2, 1);
-		result = lua_toboolean(L, -1);
-		if(status != LUA_OK)
+		if(luahelper_pcall(L, 0, 0) != LUA_OK)
 		{
-			const char * msg = lua_tostring(L, -1);
-			lua_writestringerror("%s: ", argv[0]);
-			lua_writestringerror("%s\r\n", msg);
+			lua_writestringerror("%s: ", task->name);
+			lua_writestringerror("%s\r\n", lua_tostring(L, -1));
 			lua_pop(L, 1);
 		}
 		lua_close(L);
 	}
-	runtime_destroy_restore(&rt, r);
-	return (result && (status == LUA_OK)) ? 0 : -1;
+	vmctx_free(ctx);
+}
+
+int vmexec(const char * path, const char * fb)
+{
+	struct task_t * task;
+	struct vmctx_t * ctx;
+
+	if(!is_absolute_path(path))
+		return -1;
+
+	ctx = vmctx_alloc(path, fb);
+	if(!ctx)
+		return -1;
+
+	task = task_create(NULL, path, vm_task, ctx, 0, 0);
+	if(!task)
+	{
+		vmctx_free(ctx);
+		return -1;
+	}
+
+	task_resume(task);
+	return 0;
 }

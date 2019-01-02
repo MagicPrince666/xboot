@@ -39,19 +39,17 @@
 
 int xboot_main(int argc, char * argv[])
 {
-	struct runtime_t rt;
+	/* Do initial memory */
+	do_init_mem();
 
-	/* Do initial mem pool */
-	do_init_mem_pool();
+	/* Do initial scheduler */
+	do_init_sched();
 
-	/* Do initial dma pool */
-	do_init_dma_pool();
+	/* Do initial event */
+	do_init_event();
 
 	/* Do initial vfs */
 	do_init_vfs();
-
-	/* Create runtime */
-	runtime_create_save(&rt, 0, 0);
 
 	/* Do all initial calls */
 	do_initcalls();
@@ -136,7 +134,7 @@ int xboot_main(int argc, char * argv[])
 	while(1)
 	{
 		/* Run shell */
-		run_shell();
+		//run_shell();
 		
 		if(uart1 != NULL)
 		{
@@ -229,12 +227,20 @@ int xboot_main(int argc, char * argv[])
 		*/
 	}
 
+//#if	defined(CONFIG_SHELL_TASK) && (CONFIG_SHELL_TASK > 0)
+//	/* Create shell task */
+//	struct task_t * task = task_create(NULL, "shell", shell_task, NULL, 0, 0);
+//
+//	/* Resume shell task */
+//	task_resume(task);
+//#endif
+
+	/* Scheduler loop */
+	scheduler_loop();
+
 	//free(uart1_buf);
 	/* Do all exit calls */
 	do_exitcalls();
-
-	/* Destroy runtime */
-	runtime_destroy_restore(&rt, 0);
 
 	/* Xboot return */
 	return 0;

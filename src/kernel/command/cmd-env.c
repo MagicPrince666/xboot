@@ -26,6 +26,7 @@
  *
  */
 
+#include <xboot.h>
 #include <command/command.h>
 
 static void usage(void)
@@ -36,7 +37,7 @@ static void usage(void)
 
 static int do_env(int argc, char ** argv)
 {
-	struct environ_t * environ = &(runtime_get()->__environ);
+	struct environ_t * environ = &__environ;
 	struct environ_t * p;
 	int i;
 

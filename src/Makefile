@@ -99,18 +99,17 @@ SRCDIRS		+=	arch/$(ARCH)/lib/cpu						\
 				lib/libx									\
 				init										\
 				kernel										\
+				kernel/command								\
 				kernel/core									\
 				kernel/shell								\
-				kernel/command								\
 				kernel/time									\
-				kernel/fs									\
-				kernel/fs/vfs								\
-				kernel/fs/ramfs								\
-				kernel/fs/sysfs								\
-				kernel/fs/arfs								\
-				kernel/fs/tarfs								\
-				kernel/fs/cpiofs							\
-				kernel/fs/fatfs								\
+				kernel/vfs									\
+				kernel/vfs/cpio								\
+				kernel/vfs/ext4								\
+				kernel/vfs/fat								\
+				kernel/vfs/ram								\
+				kernel/vfs/sys								\
+				kernel/vfs/tar								\
 				kernel/xfs									\
 				driver/adc									\
 				driver/audio								\
@@ -156,7 +155,7 @@ SRCDIRS		+=	arch/$(ARCH)/lib/cpu						\
 				driver/vibrator								\
 				driver/watchdog								\
 				framework									\
-				framework/base64							\
+				framework/codec								\
 				framework/display							\
 				framework/event								\
 				framework/hardware							\
@@ -178,19 +177,19 @@ SRCDIRS		+=	external/zlib-1.2.11
 INCDIRS		+= 	external/libpng-1.6.32
 SRCDIRS		+=	external/libpng-1.6.32
 
-INCDIRS		+= 	external/lua-5.3.4
-SRCDIRS		+=	external/lua-5.3.4
+INCDIRS		+= 	external/lua-5.3.5
+SRCDIRS		+=	external/lua-5.3.5
 
 INCDIRS		+= 	external/lua-cjson-2.1.0
 SRCDIRS		+=	external/lua-cjson-2.1.0
 
-INCDIRS		+= 	external/pixman-0.34.0 \
-				external/pixman-0.34.0/$(ARCH)
-SRCDIRS		+=	external/pixman-0.34.0 \
-				external/pixman-0.34.0/$(ARCH)
+INCDIRS		+= 	external/pixman-0.36.0 \
+				external/pixman-0.36.0/$(ARCH)
+SRCDIRS		+=	external/pixman-0.36.0 \
+				external/pixman-0.36.0/$(ARCH)
 
-INCDIRS		+= 	external/cairo-1.14.10
-SRCDIRS		+=	external/cairo-1.14.10
+INCDIRS		+= 	external/cairo-1.16.0
+SRCDIRS		+=	external/cairo-1.16.0
 
 INCDIRS		+= 	external/freetype-2.8/include \
 				external/freetype-2.8/src/autofit \

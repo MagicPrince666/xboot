@@ -5,13 +5,12 @@
 extern "C" {
 #endif
 
-#include <xboot/module.h>
-
 struct environ_t {
 	char * content;
 	struct environ_t * prev;
 	struct environ_t * next;
 };
+extern struct environ_t __environ;
 
 char * getenv(const char * name);
 int putenv(const char * str);

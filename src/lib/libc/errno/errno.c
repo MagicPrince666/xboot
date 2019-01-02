@@ -2,11 +2,12 @@
  * libc/errno/errno.c
  */
 
-#include <runtime.h>
 #include <errno.h>
+#include <xboot/task.h>
+#include <xboot/module.h>
 
-volatile int * __runtime_errno_location(void)
+volatile int * __task_errno_location(void)
 {
-	return &(runtime_get()->__errno);
+	return &(task_self()->__errno);
 }
-EXPORT_SYMBOL(__runtime_errno_location);
+EXPORT_SYMBOL(__task_errno_location);

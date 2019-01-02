@@ -2,7 +2,9 @@
  * libc/path/dirname.c
  */
 
+#include <string.h>
 #include <path.h>
+#include <xboot/module.h>
 
 char * dirname(char * path)
 {
@@ -10,17 +12,17 @@ char * dirname(char * path)
 	if(!path || !*path)
 		return ".";
 	i = strlen(path) - 1;
-	for(; path[i]=='/'; i--)
+	for(; path[i] == '/'; i--)
 	{
 		if(!i)
 			return "/";
 	}
-	for(; path[i]!='/'; i--)
+	for(; path[i] != '/'; i--)
 	{
 		if(!i)
 			return ".";
 	}
-	for(; path[i]=='/'; i--)
+	for(; path[i] == '/'; i--)
 	{
 		if(!i)
 			return "/";
