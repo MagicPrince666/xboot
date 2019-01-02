@@ -74,12 +74,22 @@ int xboot_main(int argc, char * argv[])
 	pwm_config(pwm1, 1500000, 20000000, 1);
 	//pwm_config(pwm0, 800000, 1000000, 1);
 	pwm_enable(pwm1);
+*/
 
 	struct uart_t * uart1 = search_uart("uart-16550.1");
-	uart_set(uart1,115200,8,0,1);
-	const char *str = "hello uart1\r\n";
-	uart_write(uart1,str,sizeof(str));
-*/
+	//struct device_t ** device = NULL;
+	const char str[] = "hello uart1\r\n";
+	if(uart1 == NULL)
+	{
+		printf("no device found\r\n");
+	}
+	else
+	{
+	//	register_uart(device,uart1);
+		uart_set(uart1,115200,8,0,1);	
+		uart_write(uart1,(u8_t *)str,sizeof(str));
+	}
+
 	gpio_set_cfg(F1C100S_GPIOE2,0x01);  //初始化端口功能
 	gpio_set_cfg(F1C100S_GPIOE3,0x01);
 	gpio_set_cfg(F1C100S_GPIOE4,0x01);
@@ -110,11 +120,11 @@ int xboot_main(int argc, char * argv[])
 
 	usb_device_init(USB_TYPE_USB_COM);
 
-/*
+
 	u8_t * uart1_buf = malloc(1024);
 	int recv_cnt = 0;
 	int cnt = 0;
-
+/*
 	u8_t key = 0;
 	u8_t l_lx = 0,l_ly = 0,l_rx = 0,l_ry = 0;
 	u8_t lx,ly,rx,ry;
@@ -127,14 +137,21 @@ int xboot_main(int argc, char * argv[])
 	{
 		/* Run shell */
 		run_shell();
-		/*
-		recv_cnt = uart_read(uart1,uart1_buf,1024);
-		if(recv_cnt > 0)
-		{
-			uart1_buf[recv_cnt] = 0;
-			printf("%s\r\n",uart1_buf);
-		}
 		
+		if(uart1 != NULL)
+		{
+			recv_cnt = uart_read(uart1,uart1_buf,1024);
+			if(recv_cnt > 0)
+			{
+				uart1_buf[recv_cnt] = 0;
+				printf("%s\r\n",uart1_buf);
+			}
+
+			uart_write(uart1,(u8_t *)str,sizeof(str));
+
+			//printf("uart2 send buffer\r\n");
+		}
+		/*
 		key = PS2_DataKey();
 		if(key != 0)               
 		{

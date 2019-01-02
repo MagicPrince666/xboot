@@ -5,7 +5,7 @@
 #
 # You must pass CROSS_COMPILE and PLATFORM variable.
 #
-CROSS_COMPILE	?=/home/prince/share/F1C100S/gcc-linaro-5.3.1-2016.05-x86_64_arm-eabi/bin/arm-eabi-
+CROSS_COMPILE	?=/home/prince/share/f1c100s/gcc-linaro-5.3.1-2016.05-x86_64_arm-eabi/bin/arm-eabi-
 PLATFORM		?=arm32-f1c100s
 
 #

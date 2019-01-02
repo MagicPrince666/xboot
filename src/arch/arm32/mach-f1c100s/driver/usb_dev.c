@@ -605,6 +605,8 @@ void usb_config_ep_in(int epidx,int maxpack,int type)
 }
 void usb_config_ep_out(int epidx,int maxpack,int type)
 {
+	//USBC_ConfigFifo(u32 ep_type, u32 is_double_fifo, u32 fifo_size, u32 fifo_addr)
+	//USBC_ConfigFifo();
 	u32 old_ep_idx  = 0;
 	if(epidx)
 	{
