@@ -1,7 +1,7 @@
 /*
  * init/init.c
  *
- * Copyright(c) 2007-2018 Jianjun Jiang <8192542@qq.com>
+ * Copyright(c) 2007-2019 Jianjun Jiang <8192542@qq.com>
  * Official site: http://xboot.org
  * Mobile phone: +86-18665388956
  * QQ: 8192542
@@ -47,7 +47,7 @@ void do_showlogo(void)
 		{
 			if((fb = (struct framebuffer_t *)(pos->priv)))
 			{
-				cs = cairo_xboot_surface_create(fb, fb->alone);
+				cs = cairo_xboot_surface_create(fb);
 				cr = cairo_create(cs);
 
 				cairo_save(cr);

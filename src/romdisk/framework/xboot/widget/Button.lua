@@ -1,3 +1,5 @@
+local Dobject = require "graphic.dobject"
+
 local M = Class(DisplayObject)
 
 M.STATE_NORMAL = "NORMAL"
@@ -27,9 +29,9 @@ function M:init(option, name)
 	self.framePressed = assets:loadDisplay(self.opt.imagePressed)
 	self.frameDisabled = assets:loadDisplay(self.opt.imageDisabled)
 
-	self.frameNormal:setAlignment(Object.ALIGN_CENTER_FILL)
-	self.framePressed:setAlignment(Object.ALIGN_CENTER_FILL)
-	self.frameDisabled:setAlignment(Object.ALIGN_CENTER_FILL)
+	self.frameNormal:setAlignment(Dobject.ALIGN_CENTER_FILL)
+	self.framePressed:setAlignment(Dobject.ALIGN_CENTER_FILL)
+	self.frameDisabled:setAlignment(Dobject.ALIGN_CENTER_FILL)
 
 	local width, height = self.frameNormal:getSize()
 	self.opt.width = self.opt.width or width
@@ -45,13 +47,13 @@ function M:init(option, name)
 	self:setEnable(self.opt.enable)
 	self:updateVisualState()
 
-	self:addEventListener(Event.MOUSE_DOWN, self.onMouseDown, self)
-	self:addEventListener(Event.MOUSE_MOVE, self.onMouseMove, self)
-	self:addEventListener(Event.MOUSE_UP, self.onMouseUp, self)
+	self:addEventListener(Event.MOUSE_DOWN, self.onMouseDown)
+	self:addEventListener(Event.MOUSE_MOVE, self.onMouseMove)
+	self:addEventListener(Event.MOUSE_UP, self.onMouseUp)
 
-	self:addEventListener(Event.TOUCH_BEGIN, self.onTouchBegin, self)
-	self:addEventListener(Event.TOUCH_MOVE, self.onTouchMove, self)
-	self:addEventListener(Event.TOUCH_END, self.onTouchEnd, self)
+	self:addEventListener(Event.TOUCH_BEGIN, self.onTouchBegin)
+	self:addEventListener(Event.TOUCH_MOVE, self.onTouchMove)
+	self:addEventListener(Event.TOUCH_END, self.onTouchEnd)
 end
 
 function M:setSize(width, height)

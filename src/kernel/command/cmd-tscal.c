@@ -1,7 +1,7 @@
 /*
  * kernel/command/cmd-tscal.c
  *
- * Copyright(c) 2007-2018 Jianjun Jiang <8192542@qq.com>
+ * Copyright(c) 2007-2019 Jianjun Jiang <8192542@qq.com>
  * Official site: http://xboot.org
  * Mobile phone: +86-18665388956
  * QQ: 8192542
@@ -177,7 +177,7 @@ static int do_tscal(int argc, char ** argv)
 		return -1;
 	}
 
-	cs = cairo_xboot_surface_create(fb, fb->alone);
+	cs = cairo_xboot_surface_create(fb);
 	cr = cairo_create(cs);
 	width = cairo_image_surface_get_width(cs);
 	height = cairo_image_surface_get_height(cs);
