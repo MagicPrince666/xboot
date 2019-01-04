@@ -60,180 +60,180 @@ int xboot_main(int argc, char * argv[])
 	/* Do auto boot */
 	do_autoboot();
 
-	/* Do initial pwm */	
-/*
-	struct pwm_t* pwm0 = search_pwm("pwm-f1c100s.0");
+// 	/* Do initial pwm */	
+// /*
+// 	struct pwm_t* pwm0 = search_pwm("pwm-f1c100s.0");
 
-	pwm_config(pwm0, 500000, 1000000, 1);
-	pwm_enable(pwm0);
+// 	pwm_config(pwm0, 500000, 1000000, 1);
+// 	pwm_enable(pwm0);
 
-	struct pwm_t* pwm1 = search_pwm("pwm-f1c100s.1");
+// 	struct pwm_t* pwm1 = search_pwm("pwm-f1c100s.1");
 	
-	pwm_config(pwm1, 1500000, 20000000, 1);
-	//pwm_config(pwm0, 800000, 1000000, 1);
-	pwm_enable(pwm1);
-*/
+// 	pwm_config(pwm1, 1500000, 20000000, 1);
+// 	//pwm_config(pwm0, 800000, 1000000, 1);
+// 	pwm_enable(pwm1);
+// */
 
-	struct uart_t * uart1 = search_uart("uart-16550.1");
-	//struct device_t ** device = NULL;
-	const char str[] = "hello uart1\r\n";
-	if(uart1 == NULL)
-	{
-		printf("no device found\r\n");
-	}
-	else
-	{
-	//	register_uart(device,uart1);
-		uart_set(uart1,115200,8,0,1);	
-		uart_write(uart1,(u8_t *)str,sizeof(str));
-	}
+// 	struct uart_t * uart1 = search_uart("uart-16550.1");
+// 	//struct device_t ** device = NULL;
+// 	const char str[] = "hello uart1\r\n";
+// 	if(uart1 == NULL)
+// 	{
+// 		printf("no device found\r\n");
+// 	}
+// 	else
+// 	{
+// 	//	register_uart(device,uart1);
+// 		uart_set(uart1,115200,8,0,1);	
+// 		uart_write(uart1,(u8_t *)str,sizeof(str));
+// 	}
 
-	gpio_set_cfg(F1C100S_GPIOE2,0x01);  //初始化端口功能
-	gpio_set_cfg(F1C100S_GPIOE3,0x01);
-	gpio_set_cfg(F1C100S_GPIOE4,0x01);
-	gpio_set_cfg(F1C100S_GPIOE5,0x01);
-	gpio_set_pull(F1C100S_GPIOE2,GPIO_PULL_NONE); 
-	gpio_set_pull(F1C100S_GPIOE3,GPIO_PULL_NONE); 
-	gpio_set_pull(F1C100S_GPIOE4,GPIO_PULL_NONE); 
-	gpio_set_pull(F1C100S_GPIOE5,GPIO_PULL_NONE);   
-	gpio_set_drv(F1C100S_GPIOE2,GPIO_DRV_WEAKER);
-	gpio_set_drv(F1C100S_GPIOE3,GPIO_DRV_WEAKER);
-	gpio_set_drv(F1C100S_GPIOE4,GPIO_DRV_WEAKER);
-	gpio_set_drv(F1C100S_GPIOE5,GPIO_DRV_WEAKER);
-	gpio_set_direction(F1C100S_GPIOE2,GPIO_DIRECTION_OUTPUT);
-	gpio_set_direction(F1C100S_GPIOE3,GPIO_DIRECTION_OUTPUT);
-	gpio_set_direction(F1C100S_GPIOE4,GPIO_DIRECTION_OUTPUT);
-	gpio_set_direction(F1C100S_GPIOE5,GPIO_DIRECTION_OUTPUT);
-	gpio_set_rate(F1C100S_GPIOE2,GPIO_RATE_FAST);
-	gpio_set_rate(F1C100S_GPIOE3,GPIO_RATE_FAST);
-	gpio_set_rate(F1C100S_GPIOE4,GPIO_RATE_FAST);
-	gpio_set_rate(F1C100S_GPIOE5,GPIO_RATE_FAST);
+// 	gpio_set_cfg(F1C100S_GPIOE2,0x01);  //初始化端口功能
+// 	gpio_set_cfg(F1C100S_GPIOE3,0x01);
+// 	gpio_set_cfg(F1C100S_GPIOE4,0x01);
+// 	gpio_set_cfg(F1C100S_GPIOE5,0x01);
+// 	gpio_set_pull(F1C100S_GPIOE2,GPIO_PULL_NONE); 
+// 	gpio_set_pull(F1C100S_GPIOE3,GPIO_PULL_NONE); 
+// 	gpio_set_pull(F1C100S_GPIOE4,GPIO_PULL_NONE); 
+// 	gpio_set_pull(F1C100S_GPIOE5,GPIO_PULL_NONE);   
+// 	gpio_set_drv(F1C100S_GPIOE2,GPIO_DRV_WEAKER);
+// 	gpio_set_drv(F1C100S_GPIOE3,GPIO_DRV_WEAKER);
+// 	gpio_set_drv(F1C100S_GPIOE4,GPIO_DRV_WEAKER);
+// 	gpio_set_drv(F1C100S_GPIOE5,GPIO_DRV_WEAKER);
+// 	gpio_set_direction(F1C100S_GPIOE2,GPIO_DIRECTION_OUTPUT);
+// 	gpio_set_direction(F1C100S_GPIOE3,GPIO_DIRECTION_OUTPUT);
+// 	gpio_set_direction(F1C100S_GPIOE4,GPIO_DIRECTION_OUTPUT);
+// 	gpio_set_direction(F1C100S_GPIOE5,GPIO_DIRECTION_OUTPUT);
+// 	gpio_set_rate(F1C100S_GPIOE2,GPIO_RATE_FAST);
+// 	gpio_set_rate(F1C100S_GPIOE3,GPIO_RATE_FAST);
+// 	gpio_set_rate(F1C100S_GPIOE4,GPIO_RATE_FAST);
+// 	gpio_set_rate(F1C100S_GPIOE5,GPIO_RATE_FAST);
 
-	gpio_set_value(F1C100S_GPIOE2,1);
-	gpio_set_value(F1C100S_GPIOE3,1);
-	gpio_set_value(F1C100S_GPIOE4,1);
-	gpio_set_value(F1C100S_GPIOE5,0);
+// 	gpio_set_value(F1C100S_GPIOE2,1);
+// 	gpio_set_value(F1C100S_GPIOE3,1);
+// 	gpio_set_value(F1C100S_GPIOE4,1);
+// 	gpio_set_value(F1C100S_GPIOE5,0);
 
 	
 
-	usb_device_init(USB_TYPE_USB_COM);
+// 	usb_device_init(USB_TYPE_USB_COM);
 
 
-	u8_t * uart1_buf = malloc(1024);
-	int recv_cnt = 0;
-	int cnt = 0;
-/*
-	u8_t key = 0;
-	u8_t l_lx = 0,l_ly = 0,l_rx = 0,l_ry = 0;
-	u8_t lx,ly,rx,ry;
-	int speed = 0;
-	PS2_Init();
-	PS2_SetInit();
-*/
-	/* Run loop */
-	while(1)
-	{
-		/* Run shell */
-		//run_shell();
+// 	u8_t * uart1_buf = malloc(1024);
+// 	int recv_cnt = 0;
+// 	int cnt = 0;
+// /*
+// 	u8_t key = 0;
+// 	u8_t l_lx = 0,l_ly = 0,l_rx = 0,l_ry = 0;
+// 	u8_t lx,ly,rx,ry;
+// 	int speed = 0;
+// 	PS2_Init();
+// 	PS2_SetInit();
+// */
+// 	/* Run loop */
+// 	while(1)
+// 	{
+// 		/* Run shell */
+// 		//run_shell();
 		
-		if(uart1 != NULL)
-		{
-			recv_cnt = uart_read(uart1,uart1_buf,1024);
-			if(recv_cnt > 0)
-			{
-				uart1_buf[recv_cnt] = 0;
-				printf("%s\r\n",uart1_buf);
-			}
+// 		if(uart1 != NULL)
+// 		{
+// 			recv_cnt = uart_read(uart1,uart1_buf,1024);
+// 			if(recv_cnt > 0)
+// 			{
+// 				uart1_buf[recv_cnt] = 0;
+// 				printf("%s\r\n",uart1_buf);
+// 			}
 
-			uart_write(uart1,(u8_t *)str,sizeof(str));
+// 			uart_write(uart1,(u8_t *)str,sizeof(str));
 
-			//printf("uart2 send buffer\r\n");
-		}
-		/*
-		key = PS2_DataKey();
-		if(key != 0)               
-		{
-			printf("key = %d\r\n",key);
-			if(key == 12)
-			{
-				PS2_Vibration(0xFF,0x00);
-				mdelay(500);
-			}
-			else if(key == 11)
-			{
-				PS2_Vibration(0x00,0xFF); 
-				mdelay(500);
-			}
-			else
-				PS2_Vibration(0x00,0x00); 
+// 			//printf("uart2 send buffer\r\n");
+// 		}
+// 		/*
+// 		key = PS2_DataKey();
+// 		if(key != 0)               
+// 		{
+// 			printf("key = %d\r\n",key);
+// 			if(key == 12)
+// 			{
+// 				PS2_Vibration(0xFF,0x00);
+// 				mdelay(500);
+// 			}
+// 			else if(key == 11)
+// 			{
+// 				PS2_Vibration(0x00,0xFF); 
+// 				mdelay(500);
+// 			}
+// 			else
+// 				PS2_Vibration(0x00,0x00); 
 			
-			switch(key)
-			{
-				case 5:;
-				case 7:pwm_config(pwm1, 1500000, 20000000, 1);break;
-				case 6:pwm_config(pwm1, 2000000, 20000000, 1);break;
-				case 8:pwm_config(pwm1, 1000000, 20000000, 1);break;
-			}
-		}
+// 			switch(key)
+// 			{
+// 				case 5:;
+// 				case 7:pwm_config(pwm1, 1500000, 20000000, 1);break;
+// 				case 6:pwm_config(pwm1, 2000000, 20000000, 1);break;
+// 				case 8:pwm_config(pwm1, 1000000, 20000000, 1);break;
+// 			}
+// 		}
 		
-		lx = PS2_AnologData(PSS_LX);
-		ly = PS2_AnologData(PSS_LY);
-		rx = PS2_AnologData(PSS_RX);
-		ry = PS2_AnologData(PSS_RY);
+// 		lx = PS2_AnologData(PSS_LX);
+// 		ly = PS2_AnologData(PSS_LY);
+// 		rx = PS2_AnologData(PSS_RX);
+// 		ry = PS2_AnologData(PSS_RY);
 
-		if(ry < 120)
-		{
-			speed = (128 - ry)/128 * 1000000;
-			gpio_set_value(F1C100S_GPIOE3,1);
-			gpio_set_value(F1C100S_GPIOE4,0);
-			pwm_config(pwm0, speed, 1000000, 1);
-		}
-		else if(ry > 135)
-		{
-			speed = (ry -128)/128 * 1000000;
-			gpio_set_value(F1C100S_GPIOE3,0);
-			gpio_set_value(F1C100S_GPIOE4,1);
-			pwm_config(pwm0, speed, 1000000, 1);
-		}
-		else
-		{
-			gpio_set_value(F1C100S_GPIOE3,1);
-			gpio_set_value(F1C100S_GPIOE4,1);
-			pwm_config(pwm0, 0, 1000000, 1);
-		}
+// 		if(ry < 120)
+// 		{
+// 			speed = (128 - ry)/128 * 1000000;
+// 			gpio_set_value(F1C100S_GPIOE3,1);
+// 			gpio_set_value(F1C100S_GPIOE4,0);
+// 			pwm_config(pwm0, speed, 1000000, 1);
+// 		}
+// 		else if(ry > 135)
+// 		{
+// 			speed = (ry -128)/128 * 1000000;
+// 			gpio_set_value(F1C100S_GPIOE3,0);
+// 			gpio_set_value(F1C100S_GPIOE4,1);
+// 			pwm_config(pwm0, speed, 1000000, 1);
+// 		}
+// 		else
+// 		{
+// 			gpio_set_value(F1C100S_GPIOE3,1);
+// 			gpio_set_value(F1C100S_GPIOE4,1);
+// 			pwm_config(pwm0, 0, 1000000, 1);
+// 		}
 
-		if(l_lx != lx)
-		{
-			l_lx = lx;
-			printf("LX = %d\r\n",lx);
-		}
-		if(l_ly != ly)
-		{
-			l_ly = ly;
-			printf("LY = %d\r\n",ly);	
-		}
-		if(l_rx != rx)
-		{
-			l_rx = rx;
-			printf("RX = %d\r\n",rx);
-		}
-		if(l_ry != ry)
-		{
-			l_ry = ry;
-			printf("RY = %d\r\n",ry);
-		}
+// 		if(l_lx != lx)
+// 		{
+// 			l_lx = lx;
+// 			printf("LX = %d\r\n",lx);
+// 		}
+// 		if(l_ly != ly)
+// 		{
+// 			l_ly = ly;
+// 			printf("LY = %d\r\n",ly);	
+// 		}
+// 		if(l_rx != rx)
+// 		{
+// 			l_rx = rx;
+// 			printf("RX = %d\r\n",rx);
+// 		}
+// 		if(l_ry != ry)
+// 		{
+// 			l_ry = ry;
+// 			printf("RY = %d\r\n",ry);
+// 		}
 
-		mdelay(100);
-		*/
-	}
+// 		mdelay(100);
+// 		*/
+// 	}
 
-//#if	defined(CONFIG_SHELL_TASK) && (CONFIG_SHELL_TASK > 0)
-//	/* Create shell task */
-//	struct task_t * task = task_create(NULL, "shell", shell_task, NULL, 0, 0);
-//
-//	/* Resume shell task */
-//	task_resume(task);
-//#endif
+#if	defined(CONFIG_SHELL_TASK) && (CONFIG_SHELL_TASK > 0)
+	/* Create shell task */
+	struct task_t * task = task_create(NULL, "shell", shell_task, NULL, 0, 0);
+
+	/* Resume shell task */
+	task_resume(task);
+#endif
 
 	/* Scheduler loop */
 	scheduler_loop();
