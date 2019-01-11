@@ -37,6 +37,34 @@
 #include "pstwo.h"
 #include "usb.h"
 
+struct uart_t * uart2 = NULL;
+const char str[] = "hello uart2\r\n";
+
+void uart2_task(struct task_t * task, void * data)
+{
+	u8_t * uart1_buf = malloc(1024);
+ 	int recv_cnt = 0;
+
+	while(1)
+	{
+		if(uart2 != NULL)
+		{
+			recv_cnt = uart_read(uart2,uart1_buf,1024);
+			if(recv_cnt > 0)
+			{
+				uart1_buf[recv_cnt] = 0;
+				printf("%s\r\n",uart1_buf);
+			}
+
+			mdelay(500);
+			uart_write(uart2,(u8_t *)str,sizeof(str));
+
+			//printf("uart2 send buffer\r\n");
+		}
+	}
+}
+
+
 int xboot_main(int argc, char * argv[])
 {
 	/* Do initial memory */
@@ -74,19 +102,16 @@ int xboot_main(int argc, char * argv[])
 // 	pwm_enable(pwm1);
 // */
 
-// 	struct uart_t * uart1 = search_uart("uart-16550.1");
+	uart2 = search_uart("uart-16550.2");
 // 	//struct device_t ** device = NULL;
-// 	const char str[] = "hello uart1\r\n";
-// 	if(uart1 == NULL)
-// 	{
-// 		printf("no device found\r\n");
-// 	}
-// 	else
-// 	{
-// 	//	register_uart(device,uart1);
-// 		uart_set(uart1,115200,8,0,1);	
-// 		uart_write(uart1,(u8_t *)str,sizeof(str));
-// 	}
+ 	if(uart2 == NULL){
+ 		printf("no device found\r\n");
+ 	}
+ 	else 	{
+ 	//	register_uart(device,uart1);
+ 		uart_set(uart2,115200,8,0,1);	
+ 		uart_write(uart2,(u8_t *)str,sizeof(str));
+ 	}
 
 // 	gpio_set_cfg(F1C100S_GPIOE2,0x01);  //初始化端口功能
 // 	gpio_set_cfg(F1C100S_GPIOE3,0x01);
@@ -116,7 +141,7 @@ int xboot_main(int argc, char * argv[])
 
 	
 
-// 	usb_device_init(USB_TYPE_USB_COM);
+ 	usb_device_init(USB_TYPE_USB_COM);
 
 
 // 	u8_t * uart1_buf = malloc(1024);
@@ -231,9 +256,20 @@ int xboot_main(int argc, char * argv[])
 	/* Create shell task */
 	struct task_t * task = task_create(NULL, "shell", shell_task, NULL, 0, 0);
 
+	/* Create uart2 task */
+	struct task_t * task2 = task_create(NULL, "uart2", uart2_task, NULL, 0, 0);
+
 	/* Resume shell task */
 	task_resume(task);
+
+	/* Resume uart2 task */
+	task_resume(task2);
+
 #endif
+
+	
+
+	
 
 	/* Scheduler loop */
 	scheduler_loop();
