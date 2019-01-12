@@ -40,18 +40,17 @@
 
 void uart2_task(struct task_t * task, void * data)
 {
-	struct uart_t * uart2 = NULL;
+	
 	const char str[] = "hello uart2\r\n";
 
-	uart2 = search_uart("uart-16550.2");
-// 	//struct device_t ** device = NULL;
+	struct uart_t * uart2 = search_uart("uart-16550.2");
  	if(uart2 == NULL){
  		printf("no device found\r\n");
  	}
- 	else 	{
- 	//	register_uart(device,uart1);
+ 	else {
  		uart_set(uart2,115200,8,0,1);	
- 		uart_write(uart2,(u8_t *)str,sizeof(str));
+		printf("init device\r\n");
+ 		uart_write(uart2,(u8_t *)str,sizeof(str));	
  	}
 
 	u8_t * uart1_buf = malloc(1024);
@@ -142,12 +141,8 @@ int xboot_main(int argc, char * argv[])
 
 	
 
- 	usb_device_init(USB_TYPE_USB_COM);
+ 	//usb_device_init(USB_TYPE_USB_COM);
 
-
-// 	u8_t * uart1_buf = malloc(1024);
-// 	int recv_cnt = 0;
-// 	int cnt = 0;
 // /*
 // 	u8_t key = 0;
 // 	u8_t l_lx = 0,l_ly = 0,l_rx = 0,l_ry = 0;
@@ -253,20 +248,19 @@ int xboot_main(int argc, char * argv[])
 // 		*/
 // 	}
 
+//	struct task_t * task2 = task_create(NULL, "uart2", uart2_task, NULL, 0, 0);
+//	task_resume(task2);
+
 #if	defined(CONFIG_SHELL_TASK) && (CONFIG_SHELL_TASK > 0)
 	/* Create shell task */
 	struct task_t * task = task_create(NULL, "shell", shell_task, NULL, 0, 0);
-
-	/* Create uart2 task */
-	struct task_t * task2 = task_create(NULL, "uart2", uart2_task, NULL, 0, 0);
-
+	
 	/* Resume shell task */
 	task_resume(task);
 
-	/* Resume uart2 task */
-	task_resume(task2);
-
 #endif
+
+
 
 	/* Scheduler loop */
 	scheduler_loop();
