@@ -29,13 +29,23 @@
 #include <framework/core/l-display-shape.h>
 
 static const char display_shape_lua[] = X(
-local Shape = require "graphic.shape"
-
 local M = Class(DisplayObject)
 
 function M:init(width, height)
 	self.shape = Shape.new(width, height)
 	self.super:init(width, height, self.shape)
+end
+
+function M:setWidth(width)
+	return self
+end
+
+function M:setHeight(height)
+	return self
+end
+
+function M:setSize(width, height)
+	return self
 end
 
 function M:save()
@@ -165,6 +175,11 @@ end
 
 function M:rectangle(x, y, width, height)
 	self.shape:rectangle(x, y, width, height)
+	return self
+end
+
+function M:roundedRectangle(x, y, width, height, radius, lt, rt, rb, lb)
+	self.shape:roundedRectangle(x, y, width, height, radius, lt, rt, rb, lb)
 	return self
 end
 

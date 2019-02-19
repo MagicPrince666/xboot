@@ -30,36 +30,74 @@
 #include <framework/luahelper.h>
 #include <framework/core/l-assets.h>
 #include <framework/core/l-class.h>
+#include <framework/core/l-display.h>
 #include <framework/core/l-display-image.h>
 #include <framework/core/l-display-ninepatch.h>
 #include <framework/core/l-display-object.h>
 #include <framework/core/l-display-shape.h>
+#include <framework/core/l-display-text.h>
+#include <framework/core/l-dobject.h>
+#include <framework/core/l-easing.h>
 #include <framework/core/l-event.h>
 #include <framework/core/l-event-dispatcher.h>
+#include <framework/core/l-font.h>
+#include <framework/core/l-image.h>
+#include <framework/core/l-matrix.h>
+#include <framework/core/l-ninepatch.h>
+#include <framework/core/l-pattern.h>
+#include <framework/core/l-shape.h>
 #include <framework/core/l-stage.h>
 #include <framework/core/l-stopwatch.h>
+#include <framework/core/l-text.h>
 #include <framework/core/l-timer.h>
+#include <framework/core/l-xfs.h>
 #include <framework/codec/l-base64.h>
 #include <framework/codec/l-json.h>
-#include <framework/graphic/l-graphic.h>
 #include <framework/hardware/l-hardware.h>
 #include <framework/vm.h>
+
+static void luaopen_glblibs(lua_State * L)
+{
+	const luaL_Reg glblibs[] = {
+		{ "Class",					luaopen_class },
+		{ "Xfs",					luaopen_xfs },
+		{ "Display",				luaopen_display },
+		{ "Easing",					luaopen_easing },
+		{ "Stopwatch",				luaopen_stopwatch },
+		{ "Matrix",					luaopen_matrix },
+		{ "Image",					luaopen_image },
+		{ "Ninepatch",				luaopen_ninepatch },
+		{ "Pattern",				luaopen_pattern },
+		{ "Shape",					luaopen_shape },
+		{ "Font",					luaopen_font },
+		{ "Text",					luaopen_text },
+		{ "Dobject",				luaopen_dobject },
+		{ "Event",					luaopen_event },
+		{ "EventDispatcher",		luaopen_event_dispatcher },
+		{ "DisplayObject",			luaopen_display_object },
+		{ "DisplayImage",			luaopen_display_image },
+		{ "DisplayNinepatch",		luaopen_display_ninepatch },
+		{ "DisplayShape",			luaopen_display_shape },
+		{ "DisplayText",			luaopen_display_text },
+		{ "Timer",					luaopen_timer },
+		{ "Stage",					luaopen_stage },
+		{ "Assets",					luaopen_assets },
+		{ NULL,	NULL },
+	};
+	const luaL_Reg * lib;
+
+	for(lib = glblibs; lib->func; lib++)
+	{
+		luaL_requiref(L, lib->name, lib->func, 1);
+		lua_pop(L, 1);
+	}
+}
 
 static void luaopen_prelibs(lua_State * L)
 {
 	const luaL_Reg prelibs[] = {
 		{ "codec.base64",			luaopen_base64 },
 		{ "codec.json",				luaopen_cjson_safe },
-
-		{ "graphic.display",		luaopen_display },
-		{ "graphic.dobject",		luaopen_dobject },
-		{ "graphic.easing",			luaopen_easing },
-		{ "graphic.font",			luaopen_font },
-		{ "graphic.image",			luaopen_image },
-		{ "graphic.matrix",			luaopen_matrix },
-		{ "graphic.ninepatch",		luaopen_ninepatch },
-		{ "graphic.pattern",		luaopen_pattern },
-		{ "graphic.shape",			luaopen_shape },
 
 		{ "hardware.adc",			luaopen_hardware_adc },
 		{ "hardware.battery",		luaopen_hardware_battery },
@@ -95,31 +133,6 @@ static void luaopen_prelibs(lua_State * L)
 	for(lib = prelibs; lib->func; lib++)
 	{
 		luahelper_preload(L, lib->name, lib->func);
-	}
-}
-
-static void luaopen_glblibs(lua_State * L)
-{
-	const luaL_Reg glblibs[] = {
-		{ "Class",					luaopen_class },
-		{ "Stopwatch",				luaopen_stopwatch },
-		{ "Timer",					luaopen_timer },
-		{ "Event",					luaopen_event },
-		{ "EventDispatcher",		luaopen_event_dispatcher },
-		{ "DisplayObject",			luaopen_display_object },
-		{ "DisplayImage",			luaopen_display_image },
-		{ "DisplayNinepatch",		luaopen_display_ninepatch },
-		{ "DisplayShape",			luaopen_display_shape },
-		{ "Stage",					luaopen_stage },
-		{ "Assets",					luaopen_assets },
-		{ NULL,	NULL },
-	};
-	const luaL_Reg * lib;
-
-	for(lib = glblibs; lib->func; lib++)
-	{
-		luaL_requiref(L, lib->name, lib->func, 1);
-		lua_pop(L, 1);
 	}
 }
 
@@ -244,8 +257,8 @@ static int l_xboot_uniqueid(lua_State * L)
 static int pmain(lua_State * L)
 {
 	luaL_openlibs(L);
-	luaopen_prelibs(L);
 	luaopen_glblibs(L);
+	luaopen_prelibs(L);
 
 	luahelper_package_searcher(L, l_search_package_lua, 2);
 	luahelper_package_path(L, "./?/init.lua;./?.lua");

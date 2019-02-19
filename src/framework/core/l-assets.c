@@ -29,9 +29,9 @@
 #include <framework/core/l-assets.h>
 
 static const char assets_lua[] = X(
-local Image = require "graphic.image"
-local Ninepatch = require "graphic.ninepatch"
-local Font = require "graphic.font"
+local Font = Font
+local Image = Image
+local Ninepatch = Ninepatch
 local DisplayImage = DisplayImage
 local DisplayNinepatch = DisplayNinepatch
 
@@ -39,20 +39,17 @@ local M = Class()
 
 function M:init()
 	self.images = {}
-	self.ninepatches = {}
-	self.themes = {}
 	self.fonts = {}
+	self.themes = {}
 end
 
 function M:loadImage(filename)
 	if not filename then
 		return nil
 	end
-
 	if not self.images[filename] then
 		self.images[filename] = Image.new(filename)
 	end
-
 	return self.images[filename]
 end
 
@@ -60,12 +57,29 @@ function M:loadNinepatch(filename)
 	if not filename then
 		return nil
 	end
+	return Ninepatch.new(filename)
+end
 
-	if not self.ninepatches[filename] then
-		self.ninepatches[filename] = Ninepatch.new(filename)
+function M:loadFont(family, size)
+	local size = size or 1
+	if not family then
+		return nil
 	end
+	if not self.fonts[family] then
+		self.fonts[family] = {}
+	end
+	if not self.fonts[family][size] then
+		self.fonts[family][size] = Font.new(family, size)
+	end
+	return self.fonts[family][size]
+end
 
-	return self.ninepatches[filename]
+function M:loadTheme(name)
+	local name = name or "default"
+	if not self.themes[name] then
+		self.themes[name] = require("assets.themes." .. name)
+	end
+	return self.themes[name]
 end
 
 function M:loadDisplay(image)
@@ -80,26 +94,10 @@ function M:loadDisplay(image)
 	end
 end
 
-function M:loadTheme(name)
-	local name = name or "default"
-
-	if not self.themes[name] then
-		self.themes[name] = require("assets.themes." .. name)
-	end
-
-	return self.themes[name]
-end
-
-function M:loadFont(family)
-	if not family then
-		return nil
-	end
-
-	if not self.fonts[family] then
-		self.fonts[family] = Font.new(family)
-	end
-
-	return self.fonts[family]
+function M:clear()
+	self.images = {}
+	self.fonts = {}
+	self.themes = {}
 end
 
 return M

@@ -1,5 +1,5 @@
 /*
- * framework/graphic/l-easing.c
+ * framework/core/l-easing.c
  *
  * Copyright(c) 2007-2019 Jianjun Jiang <8192542@qq.com>
  * Official site: http://xboot.org
@@ -27,7 +27,7 @@
  */
 
 #include <xboot.h>
-#include <framework/graphic/l-graphic.h>
+#include <framework/core/l-easing.h>
 
 /*
  * For all easing functions:

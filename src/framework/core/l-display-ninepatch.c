@@ -29,8 +29,6 @@
 #include <framework/core/l-display-ninepatch.h>
 
 static const char display_ninepatch_lua[] = X(
-local Ninepatch = require "graphic.ninepatch"
-
 local M = Class(DisplayObject)
 
 function M:init(ninepatch)
@@ -43,11 +41,27 @@ function M:init(ninepatch)
 	end
 end
 
+function M:setWidth(width)
+	if self.ninepatch then
+		self.ninepatch:setWidth(width)
+	end
+	self.super:setWidth(width)
+	return self
+end
+
+function M:setHeight(height)
+	if self.ninepatch then
+		self.ninepatch:setHeight(height)
+	end
+	self.super:setHeight(height)
+	return self
+end
+
 function M:setSize(width, height)
-	self.super:setSize(width, height)
 	if self.ninepatch then
 		self.ninepatch:setSize(width, height)
 	end
+	self.super:setSize(width, height)
 	return self
 end
 

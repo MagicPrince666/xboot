@@ -1,7 +1,6 @@
-local Dobject = require "graphic.dobject"
-local Image = require "graphic.image"
-local Pattern = require "graphic.pattern"
 local Game = require "games.2048.Game"
+local Dobject = Dobject
+local Pattern = Pattern
 
 local M = Class(DisplayObject)
 

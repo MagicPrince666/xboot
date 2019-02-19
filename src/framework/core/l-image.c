@@ -1,5 +1,5 @@
 /*
- * framework/graphic/l-image.c
+ * framework/core/l-image.c
  *
  * Copyright(c) 2007-2019 Jianjun Jiang <8192542@qq.com>
  * Official site: http://xboot.org
@@ -27,7 +27,7 @@
  */
 
 #include <xboot.h>
-#include <framework/graphic/l-graphic.h>
+#include <framework/core/l-image.h>
 
 static cairo_status_t xfs_read_func(void * closure, unsigned char * data, unsigned int size)
 {
@@ -85,7 +85,7 @@ static int m_image_gc(lua_State * L)
 	return 0;
 }
 
-static int m_image_size(lua_State * L)
+static int m_image_get_size(lua_State * L)
 {
 	struct limage_t * img = luaL_checkudata(L, 1, MT_IMAGE);
 	int w = cairo_image_surface_get_width(img->cs);
@@ -114,7 +114,7 @@ static int m_image_region(lua_State * L)
 
 static const luaL_Reg m_image[] = {
 	{"__gc",		m_image_gc},
-	{"size",		m_image_size},
+	{"getSize",		m_image_get_size},
 	{"region",		m_image_region},
 	{NULL,			NULL}
 };

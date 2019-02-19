@@ -29,18 +29,28 @@
 #include <framework/core/l-display-image.h>
 
 static const char display_image_lua[] = X(
-local Image = require "graphic.image"
-
 local M = Class(DisplayObject)
 
 function M:init(image)
 	if image then
-		local w, h = image:size()
+		local w, h = image:getSize()
 		self.image = image
 		self.super:init(w, h, image)
 	else
 		self.super:init()
 	end
+end
+
+function M:setWidth(width)
+	return self
+end
+
+function M:setHeight(height)
+	return self
+end
+
+function M:setSize(width, height)
+	return self
 end
 
 return M

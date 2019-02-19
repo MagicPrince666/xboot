@@ -29,8 +29,8 @@
 #include <framework/core/l-display-object.h>
 
 static const char display_object_lua[] = X(
-local Dobject = require "graphic.dobject"
-local Easing = require "graphic.easing"
+local Dobject = Dobject
+local Easing = Easing
 local Event = Event
 local table = table
 
@@ -117,6 +117,24 @@ function M:toBack()
 		parent.dobj:addChild(self.dobj, false)
 	end
 	return self
+end
+
+function M:setWidth(width)
+	self.dobj:setWidth(width)
+	return self
+end
+
+function M:getWidth()
+	return self.dobj:getWidth()
+end
+
+function M:setHeight(height)
+	self.dobj:setHeight(height)
+	return self
+end
+
+function M:getHeight()
+	return self.dobj:getHeight()
 end
 
 function M:setSize(width, height)
@@ -245,6 +263,24 @@ function M:getAlignment()
 	return self.dobj:getAlignment()
 end
 
+function M:setMargin(left, top, right, bottom)
+	self.dobj:setMargin(left, top, right, bottom)
+	return self
+end
+
+function M:getMargin()
+	return self.dobj:getMargin()
+end
+
+function M:setCollider(type, ...)
+	self.dobj:setCollider(type, ...)
+	return self
+end
+
+function M:getCollider()
+	return self.dobj:getCollider()
+end
+
 function M:setVisible(visible)
 	self.dobj:setVisible(visible)
 	return self
@@ -303,6 +339,10 @@ function M:animate(properties, duration, easing)
 						b = d:getSkewY()
 					elseif k == "alpha" then
 						b = d:getAlpha()
+					elseif k == "width" then
+						b = d:getWidth()
+					elseif k == "height" then
+						b = d:getHeight()
 					end
 					if b ~= nil then
 						tween.easinglist[k] = Easing.new(b, v - b, tween.duration, tween.easing)
@@ -332,6 +372,10 @@ function M:animate(properties, duration, easing)
 					d:setSkewY(v:easing(elapsed))
 				elseif k == "alpha" then
 					d:setAlpha(v:easing(elapsed))
+				elseif k == "width" then
+					d:setWidth(v:easing(elapsed))
+				elseif k == "height" then
+					d:setHeight(v:easing(elapsed))
 				end
 			end
 

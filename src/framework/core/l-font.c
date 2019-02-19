@@ -1,5 +1,5 @@
 /*
- * framework/graphic/l-font.c
+ * framework/core/l-font.c
  *
  * Copyright(c) 2007-2019 Jianjun Jiang <8192542@qq.com>
  * Official site: http://xboot.org
@@ -27,20 +27,7 @@
  */
 
 #include <xboot.h>
-#include <framework/graphic/l-graphic.h>
-
-struct lfont_t {
-	FT_Library library;
-	FT_Face fface;
-	cairo_font_face_t * face;
-	cairo_scaled_font_t * sfont;
-};
-
-cairo_scaled_font_t * luaL_checkudata_scaled_font(lua_State * L, int ud, const char * tname)
-{
-	struct lfont_t * font = luaL_checkudata(L, ud, tname);
-	return font->sfont;
-}
+#include <framework/core/l-font.h>
 
 static unsigned long ft_xfs_stream_io(FT_Stream stream, unsigned long offset, unsigned char * buffer, unsigned long count)
 {
@@ -117,6 +104,7 @@ static FT_Error FT_New_Xfs_Face(lua_State * L, FT_Library library, const char * 
 static int l_font_new(lua_State * L)
 {
 	const char * family = luaL_checkstring(L, 1);
+	double size = luaL_optnumber(L, 2, 1);
 	struct lfont_t * font = lua_newuserdata(L, sizeof(struct lfont_t));
 	if(FT_Init_FreeType(&font->library))
 		return 0;
@@ -134,16 +122,17 @@ static int l_font_new(lua_State * L)
 		return 0;
 	}
 	cairo_font_options_t * options = cairo_font_options_create();
-	cairo_matrix_t identity;
-	cairo_matrix_init_identity(&identity);
-	font->sfont = cairo_scaled_font_create(font->face, &identity, &identity, options);
+	cairo_matrix_t msize, midentity;
+	cairo_matrix_init_scale(&msize, size, size);
+	cairo_matrix_init_identity(&midentity);
+	font->font = cairo_scaled_font_reference(cairo_scaled_font_create(font->face, &msize, &midentity, options));
 	cairo_font_options_destroy(options);
-	if(cairo_scaled_font_status(font->sfont) != CAIRO_STATUS_SUCCESS)
+	if(cairo_scaled_font_status(font->font) != CAIRO_STATUS_SUCCESS)
 	{
 		FT_Done_Face(font->fface);
 		FT_Done_FreeType(font->library);
 		cairo_font_face_destroy(font->face);
-		cairo_scaled_font_destroy(font->sfont);
+		cairo_scaled_font_destroy(font->font);
 		return 0;
 	}
 	luaL_setmetatable(L, MT_FONT);
@@ -161,24 +150,12 @@ static int m_font_gc(lua_State * L)
 	FT_Done_Face(font->fface);
 	FT_Done_FreeType(font->library);
 	cairo_font_face_destroy(font->face);
-	cairo_scaled_font_destroy(font->sfont);
+	cairo_scaled_font_destroy(font->font);
 	return 0;
-}
-
-static int m_font_size(lua_State * L)
-{
-	struct lfont_t * font = luaL_checkudata(L, 1, MT_FONT);
-	const char * text = luaL_optstring(L, 2, NULL);
-	cairo_text_extents_t extents;
-	cairo_scaled_font_text_extents(font->sfont, text, &extents);
-	lua_pushnumber(L, extents.width);
-	lua_pushnumber(L, extents.height + extents.y_bearing);
-	return 2;
 }
 
 static const luaL_Reg m_font[] = {
 	{"__gc",		m_font_gc},
-	{"size",		m_font_size},
 	{NULL,			NULL}
 };
 

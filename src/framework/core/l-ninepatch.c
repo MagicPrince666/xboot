@@ -1,5 +1,5 @@
 /*
- * framework/graphic/l-ninepatch.c
+ * framework/core/l-ninepatch.c
  *
  * Copyright(c) 2007-2019 Jianjun Jiang <8192542@qq.com>
  * Official site: http://xboot.org
@@ -27,7 +27,7 @@
  */
 
 #include <xboot.h>
-#include <framework/graphic/l-graphic.h>
+#include <framework/core/l-ninepatch.h>
 
 static cairo_status_t xfs_read_func(void * closure, unsigned char * data, unsigned int size)
 {
@@ -76,8 +76,8 @@ static inline void ninepatch_stretch(struct lninepatch_t * ninepatch, double wid
 		width = ninepatch->width;
 	if(height < ninepatch->height)
 		height = ninepatch->height;
-	ninepatch->__w = width;
-	ninepatch->__h = height;
+	ninepatch->__w = round(width);
+	ninepatch->__h = round(height);
 	ninepatch->__sx = (ninepatch->__w - lr) / (ninepatch->width - lr);
 	ninepatch->__sy = (ninepatch->__h - tb) / (ninepatch->height - tb);
 }
@@ -356,6 +356,36 @@ static int m_ninepatch_gc(lua_State * L)
 	return 0;
 }
 
+static int m_ninepatch_set_width(lua_State * L)
+{
+	struct lninepatch_t * ninepatch = luaL_checkudata(L, 1, MT_NINEPATCH);
+	double w = luaL_checknumber(L, 2);
+	ninepatch_stretch(ninepatch, w, ninepatch->__h);
+	return 0;
+}
+
+static int m_ninepatch_get_width(lua_State * L)
+{
+	struct lninepatch_t * ninepatch = luaL_checkudata(L, 1, MT_NINEPATCH);
+	lua_pushnumber(L, ninepatch->__w);
+	return 1;
+}
+
+static int m_ninepatch_set_height(lua_State * L)
+{
+	struct lninepatch_t * ninepatch = luaL_checkudata(L, 1, MT_NINEPATCH);
+	double h = luaL_checknumber(L, 2);
+	ninepatch_stretch(ninepatch, ninepatch->__w, h);
+	return 0;
+}
+
+static int m_ninepatch_get_height(lua_State * L)
+{
+	struct lninepatch_t * ninepatch = luaL_checkudata(L, 1, MT_NINEPATCH);
+	lua_pushnumber(L, ninepatch->__h);
+	return 1;
+}
+
 static int m_ninepatch_set_size(lua_State * L)
 {
 	struct lninepatch_t * ninepatch = luaL_checkudata(L, 1, MT_NINEPATCH);
@@ -375,6 +405,10 @@ static int m_ninepatch_get_size(lua_State * L)
 
 static const luaL_Reg m_ninepatch[] = {
 	{"__gc",		m_ninepatch_gc},
+	{"setWidth",	m_ninepatch_set_width},
+	{"getWidth",	m_ninepatch_get_width},
+	{"setHeight",	m_ninepatch_set_height},
+	{"getHeight",	m_ninepatch_get_height},
 	{"setSize",		m_ninepatch_set_size},
 	{"getSize",		m_ninepatch_get_size},
 	{NULL,			NULL}

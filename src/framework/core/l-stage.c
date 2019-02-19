@@ -29,8 +29,6 @@
 #include <framework/core/l-stage.h>
 
 static const char stage_lua[] = X(
-local Display = require "graphic.display"
-
 local M = Class(DisplayObject)
 
 function M:init()
@@ -127,9 +125,18 @@ function M:getBacklight()
 	return self.display:getBacklight()
 end
 
+function M:showobj(value)
+	self.display:showobj(value)
+	return self
+end
+
 function M:showfps(value)
 	self.display:showfps(value)
 	return self
+end
+
+function M:snapshot()
+	return self.display:snapshot()
 end
 
 function M:loop()
