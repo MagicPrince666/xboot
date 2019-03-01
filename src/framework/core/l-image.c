@@ -85,17 +85,7 @@ static int m_image_gc(lua_State * L)
 	return 0;
 }
 
-static int m_image_get_size(lua_State * L)
-{
-	struct limage_t * img = luaL_checkudata(L, 1, MT_IMAGE);
-	int w = cairo_image_surface_get_width(img->cs);
-	int h = cairo_image_surface_get_height(img->cs);
-	lua_pushnumber(L, w);
-	lua_pushnumber(L, h);
-	return 2;
-}
-
-static int m_image_region(lua_State * L)
+static int m_image_clone(lua_State * L)
 {
 	struct limage_t * img = luaL_checkudata(L, 1, MT_IMAGE);
 	int x = luaL_optinteger(L, 2, 0);
@@ -112,10 +102,67 @@ static int m_image_region(lua_State * L)
 	return 1;
 }
 
+static int m_image_grayscale(lua_State * L)
+{
+	struct limage_t * img = luaL_checkudata(L, 1, MT_IMAGE);
+	cairo_surface_t * cs = img->cs;
+	int width = cairo_image_surface_get_width(cs);
+	int height = cairo_image_surface_get_height(cs);
+	int stride = cairo_image_surface_get_stride(cs);
+	cairo_format_t format = cairo_image_surface_get_format(cs);
+	unsigned char * p, * q = cairo_image_surface_get_data(cs);
+	unsigned char gray;
+	int x, y;
+	switch(format)
+	{
+	case CAIRO_FORMAT_ARGB32:
+		for(y = 0; y < height; y++, q += stride)
+		{
+			for(x = 0, p = q; x < width; x++, p += 4)
+			{
+				gray = (p[2] * 19595 + p[1] * 38469 + p[0] * 7472) >> 16;
+				p[2] = p[1] = p[0] = gray;
+			}
+		}
+		cairo_surface_mark_dirty(cs);
+		break;
+	case CAIRO_FORMAT_RGB24:
+		for(y = 0; y < height; y++, q += stride)
+		{
+			for(x = 0, p = q; x < width; x++, p += 4)
+			{
+				gray = (p[2] * 19595 + p[1] * 38469 + p[0] * 7472) >> 16;
+				p[2] = p[1] = p[0] = gray;
+			}
+		}
+		cairo_surface_mark_dirty(cs);
+		break;
+	case CAIRO_FORMAT_A8:
+	case CAIRO_FORMAT_A1:
+	case CAIRO_FORMAT_RGB16_565:
+	case CAIRO_FORMAT_RGB30:
+	default:
+		break;
+	}
+	lua_settop(L, 1);
+	return 1;
+}
+
+static int m_image_get_size(lua_State * L)
+{
+	struct limage_t * img = luaL_checkudata(L, 1, MT_IMAGE);
+	int w = cairo_image_surface_get_width(img->cs);
+	int h = cairo_image_surface_get_height(img->cs);
+	lua_pushnumber(L, w);
+	lua_pushnumber(L, h);
+	return 2;
+}
+
 static const luaL_Reg m_image[] = {
 	{"__gc",		m_image_gc},
+	{"clone",		m_image_clone},
+	{"grayscale",	m_image_grayscale},
 	{"getSize",		m_image_get_size},
-	{"region",		m_image_region},
 	{NULL,			NULL}
 };
 
