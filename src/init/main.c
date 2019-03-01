@@ -33,11 +33,11 @@
 #include <uart/uart.h>
 #include <gpio/gpio.h>
 #include <shell/shell.h>
-#include <f1c100s-gpio.h>
-#include "pstwo.h"
-#include "usb.h"
+//#include <f1c100s-gpio.h>
+//#include "pstwo.h"
+//#include "usb.h"
 
-
+/*
 void uart2_task(struct task_t * task, void * data)
 {
 	
@@ -80,7 +80,6 @@ void uart2_task(struct task_t * task, void * data)
 
 void mycar_task(struct task_t * task, void * data){
 
-	/* Do initial pwm */	
 	struct pwm_t* pwm0 = search_pwm("pwm-f1c100s.0");
 
 	pwm_config(pwm0, 500000, 1000000, 1);
@@ -126,7 +125,6 @@ void mycar_task(struct task_t * task, void * data){
 	PS2_Init();
 	PS2_SetInit();
 
-	/* Run loop */
 	while(1)
 	{
 		key = PS2_DataKey();
@@ -205,7 +203,7 @@ void mycar_task(struct task_t * task, void * data){
 		mdelay(100);
 	}
 }
-
+*/
 int xboot_main(int argc, char * argv[])
 {
 	/* Do initial memory */
