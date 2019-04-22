@@ -224,6 +224,7 @@ int xboot_main(int argc, char * argv[])
 	/* Do auto boot */
 	do_autoboot();
 
+
 //	struct task_t * task2 = task_create(NULL, "uart2", uart2_task, NULL, 0, 0);
 //	task_resume(task2);
 

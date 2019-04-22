@@ -178,8 +178,8 @@ function M:rectangle(x, y, width, height)
 	return self
 end
 
-function M:roundedRectangle(x, y, width, height, radius, lt, rt, rb, lb)
-	self.__shape:roundedRectangle(x, y, width, height, radius, lt, rt, rb, lb)
+function M:roundedRectangle(x, y, width, height, radius)
+	self.__shape:roundedRectangle(x, y, width, height, radius)
 	return self
 end
 
@@ -226,6 +226,10 @@ end
 function M:paint(alpha)
 	self.__shape:paint(alpha)
 	return self
+end
+
+function M:snapshot()
+	return self.__shape:snapshot()
 end
 
 return M

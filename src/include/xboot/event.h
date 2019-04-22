@@ -35,8 +35,8 @@ enum event_type_t {
 
 enum {
 	MOUSE_BUTTON_LEFT					= 0x01,
-	MOUSE_BUTTON_MIDDLE					= 0x02,
-	MOUSE_BUTTON_RIGHT					= 0x03,
+	MOUSE_BUTTON_RIGHT					= 0x02,
+	MOUSE_BUTTON_MIDDLE					= 0x03,
 	MOUSE_BUTTON_X1						= 0x04,
 	MOUSE_BUTTON_X2						= 0x05,
 };
@@ -147,10 +147,11 @@ struct event_t {
 
 struct event_context_t {
 	struct fifo_t * fifo;
+	struct hmap_t * map;
 	struct list_head entry;
 };
 
-struct event_context_t * event_context_alloc(void);
+struct event_context_t * event_context_alloc(const char * input);
 void event_context_free(struct event_context_t * ectx);
 
 void push_event(struct event_t * e);

@@ -43,17 +43,15 @@ function M:init(width, height, content)
 	self.__dobj = Dobject.new(width, height, content)
 end
 
-function M:contains(child)
-	for i, v in ipairs(self.__children) do
-		if v == child then
-			return true
-		end
-	end
-	return false
-end
-
 function M:getParent()
 	return self.__parent
+end
+
+function M:contains(child)
+	if child and child.__parent == self then
+		return true
+	end
+	return false
 end
 
 function M:addChild(child)
@@ -254,15 +252,6 @@ function M:getAlpha()
 	return self.__dobj:getAlpha()
 end
 
-function M:setAlignment(align)
-	self.__dobj:setAlignment(align)
-	return self
-end
-
-function M:getAlignment()
-	return self.__dobj:getAlignment()
-end
-
 function M:setMargin(left, top, right, bottom)
 	self.__dobj:setMargin(left, top, right, bottom)
 	return self
@@ -270,6 +259,87 @@ end
 
 function M:getMargin()
 	return self.__dobj:getMargin()
+end
+
+function M:setLayoutEnable(enable)
+	self.__dobj:setLayoutEnable(enable)
+	return self
+end
+
+function M:getLayoutEnable()
+	return self.__dobj:getLayoutEnable()
+end
+
+function M:setLayoutSpecial(enable)
+	self.__dobj:setLayoutSpecial(enable)
+	return self
+end
+
+function M:getLayoutSpecial()
+	return self.__dobj:getLayoutSpecial()
+end
+
+function M:setLayoutDirection(direction)
+	self.__dobj:setLayoutDirection(direction)
+	return self
+end
+
+function M:getLayoutDirection()
+	return self.__dobj:getLayoutDirection()
+end
+
+function M:setLayoutJustify(justify)
+	self.__dobj:setLayoutJustify(justify)
+	return self
+end
+
+function M:getLayoutJustify()
+	return self.__dobj:getLayoutJustify()
+end
+
+function M:setLayoutAlign(align)
+	self.__dobj:setLayoutAlign(align)
+	return self
+end
+
+function M:getLayoutAlign()
+	return self.__dobj:getLayoutAlign()
+end
+
+function M:setLayoutAlignSelf(align)
+	self.__dobj:setLayoutAlignSelf(align)
+	return self
+end
+
+function M:getLayoutAlignSelf()
+	return self.__dobj:getLayoutAlignSelf()
+end
+
+function M:setLayoutGrow(grow)
+	self.__dobj:setLayoutGrow(grow)
+	return self
+end
+
+function M:getLayoutGrow()
+	return self.__dobj:getLayoutGrow()
+end
+
+function M:setLayoutShrink(shrink)
+	self.__dobj:setLayoutShrink(shrink)
+	return self
+end
+
+function M:getLayoutShrink()
+	return self.__dobj:getLayoutShrink()
+end
+
+function M:setLayoutBasis(basis)
+	self.__dobj:setLayoutBasis(basis)
+	return self
+end
+
+function M:getLayoutBasis()
+	return self.__dobj:getLayoutBasis()
 end
 
 function M:setCollider(type, ...)
@@ -357,25 +427,25 @@ function M:animate(properties, duration, easing)
 
 			for k, v in pairs(tween.easinglist) do
 				if k == "x" then
-					d:setX(v:easing(elapsed))
+					d:setX(v(elapsed))
 				elseif k == "y" then
-					d:setY(v:easing(elapsed))
+					d:setY(v(elapsed))
 				elseif k == "rotation" then
-					d:setRotation(v:easing(elapsed))
+					d:setRotation(v(elapsed))
 				elseif k == "scalex" then
-					d:setScaleX(v:easing(elapsed))
+					d:setScaleX(v(elapsed))
 				elseif k == "scaley" then
-					d:setScaleY(v:easing(elapsed))
+					d:setScaleY(v(elapsed))
 				elseif k == "skewx" then
-					d:setSkewX(v:easing(elapsed))
+					d:setSkewX(v(elapsed))
 				elseif k == "skewy" then
-					d:setSkewY(v:easing(elapsed))
+					d:setSkewY(v(elapsed))
 				elseif k == "alpha" then
-					d:setAlpha(v:easing(elapsed))
+					d:setAlpha(v(elapsed))
 				elseif k == "width" then
-					d:setWidth(v:easing(elapsed))
+					d:setWidth(v(elapsed))
 				elseif k == "height" then
-					d:setHeight(v:easing(elapsed))
+					d:setHeight(v(elapsed))
 				end
 			end
 
@@ -384,9 +454,9 @@ function M:animate(properties, duration, easing)
 				d.__stopwatch:reset()
 			end
 		else
-			d:dispatchEvent(Event.new(Event.ANIMATE_COMPLETE))
+			d:dispatchEvent(Event.new("animate-complete"))
 			if not next(d.__tweenlist) then
-				d:removeEventListener(Event.ENTER_FRAME, listener)
+				d:removeEventListener("enter-frame", listener)
 				d.__stopwatch = nil
 			end
 		end
@@ -402,46 +472,29 @@ function M:animate(properties, duration, easing)
 		self.__tweenlist = {}
 	end
 
-	local tween = {properties = {}, duration = duration or 1, easing = easing or "linear"}
+	local tween = {properties = {}, duration = duration or 1, easing = easing}
 	for k, v in pairs(properties) do
 		tween.properties[k] = v
 	end
 	table.insert(self.__tweenlist, tween)
 
 	if next(self.__tweenlist) and not self.__stopwatch then
-		self:addEventListener(Event.ENTER_FRAME, listener)
+		self:addEventListener("enter-frame", listener)
 		self.__stopwatch = Stopwatch.new()
 	end
 	return self
 end
 
-function M:layout()
-	local x1, y1, x2, y2
-	for i, v in ipairs(self.__children) do
-		if v:getVisible() then
-			x1, y1, x2, y2 = self.__dobj:layout(v.__dobj, x1, y1, x2, y2)
-			v:layout()
-		end
-	end
-end
-
-function M:render(event)
-	self:dispatchEvent(event)
-	self.__dobj:draw()
-
-	for i, v in ipairs(self.__children) do
-		v:render(event)
-	end
-end
-
 function M:dispatch(event)
 	local children = self.__children
-
 	for i = #children, 1, -1 do
 		children[i]:dispatch(event)
 	end
-
 	self:dispatchEvent(event)
+end
+
+function M:render(display)
+	self.__dobj:render(display)
 end
 
 return M

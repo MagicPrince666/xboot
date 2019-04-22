@@ -31,105 +31,697 @@
 #include <framework/core/l-ninepatch.h>
 #include <framework/core/l-shape.h>
 #include <framework/core/l-text.h>
+#include <framework/core/l-display.h>
 #include <framework/core/l-dobject.h>
 
 enum {
-	MFLAG_TRANSLATE				= (0x1 << 0),
-	MFLAG_ROTATE				= (0x1 << 1),
-	MFLAG_SCALE					= (0x1 << 2),
-	MFLAG_SKEW					= (0x1 << 3),
-	MFLAG_ANCHOR				= (0x1 << 4),
-	MFLAG_LOCAL_MATRIX			= (0x1 << 5),
-	MFLAG_GLOBAL_MATRIX			= (0x1 << 6),
+	MFLAG_TRANSLATE					= (0x1 << 0),
+	MFLAG_ROTATE					= (0x1 << 1),
+	MFLAG_SCALE						= (0x1 << 2),
+	MFLAG_SKEW						= (0x1 << 3),
+	MFLAG_ANCHOR					= (0x1 << 4),
+	MFLAG_LOCAL_MATRIX				= (0x1 << 5),
+	MFLAG_GLOBAL_MATRIX				= (0x1 << 6),
+	MFLAG_GLOBAL_BOUNDS				= (0x1 << 7),
 };
 
-static inline cairo_matrix_t * dobject_local_matrix(struct ldobject_t * o)
+static inline struct matrix_t * dobject_local_matrix(struct ldobject_t * o)
 {
-	cairo_matrix_t * m = &o->local_matrix;
+	struct matrix_t * m = &o->local_matrix;
 	if(o->mflag & MFLAG_LOCAL_MATRIX)
 	{
-		if((o->mflag & (MFLAG_TRANSLATE | MFLAG_ROTATE | MFLAG_SCALE | MFLAG_SKEW | MFLAG_ANCHOR)) == MFLAG_TRANSLATE)
-		{
-			m->xx = 1; m->yx = 0;
-			m->xy = 0; m->yy = 1;
-			m->x0 = o->x; m->y0 = o->y;
-		}
-		else
+		if(o->mflag & (MFLAG_ROTATE | MFLAG_SCALE | MFLAG_SKEW | MFLAG_ANCHOR))
 		{
 			if(o->mflag & (MFLAG_ROTATE | MFLAG_SKEW))
 			{
 				double rx = o->rotation + o->skewy;
 				double ry = o->rotation - o->skewx;
-				m->xx = cos(rx);
-				m->yx = sin(rx);
-				m->xy = -sin(ry);
-				m->yy = cos(ry);
+				m->a = cos(rx);
+				m->b = sin(rx);
+				m->c = -sin(ry);
+				m->d = cos(ry);
 				if(o->mflag & MFLAG_SCALE)
 				{
-					m->xx *= o->scalex;
-					m->yx *= o->scalex;
-					m->xy *= o->scaley;
-					m->yy *= o->scaley;
+					m->a *= o->scalex;
+					m->b *= o->scalex;
+					m->c *= o->scaley;
+					m->d *= o->scaley;
 				}
 			}
 			else
 			{
-				m->xx = o->scalex; m->yx = 0;
-				m->xy = 0; m->yy = o->scaley;
+				m->a = o->scalex; m->b = 0;
+				m->c = 0; m->d = o->scaley;
 			}
 			if(o->mflag & MFLAG_ANCHOR)
 			{
 				double anchorx = o->anchorx * o->width;
 				double anchory = o->anchory * o->height;
-				m->x0 = o->x - (anchorx * m->xx + anchory * m->xy);
-				m->y0 = o->y - (anchorx * m->yx + anchory * m->yy);
+				m->tx = o->x - (anchorx * m->a + anchory * m->c);
+				m->ty = o->y - (anchorx * m->b + anchory * m->d);
 			}
 			else
 			{
-				m->x0 = o->x;
-				m->y0 = o->y;
+				m->tx = o->x;
+				m->ty = o->y;
 			}
+		}
+		else
+		{
+			m->a = 1; m->b = 0;
+			m->c = 0; m->d = 1;
+			m->tx = o->x; m->ty = o->y;
 		}
 		o->mflag &= ~MFLAG_LOCAL_MATRIX;
 	}
 	return m;
 }
 
-static inline cairo_matrix_t * dobject_global_matrix(struct ldobject_t * o)
+static inline struct matrix_t * dobject_global_matrix(struct ldobject_t * o)
 {
-	cairo_matrix_t * m = &o->global_matrix;
+	struct matrix_t * t, * m = &o->global_matrix;
+	struct ldobject_t * p;
 	if(o->mflag & MFLAG_GLOBAL_MATRIX)
 	{
-		memcpy(m, dobject_local_matrix(o), sizeof(cairo_matrix_t));
-		while(o->parent && (o->parent != o))
+		p = o;
+		memcpy(m, dobject_local_matrix(p), sizeof(struct matrix_t));
+		while(p->parent)
 		{
-			o = o->parent;
-			cairo_matrix_multiply(m, m, dobject_local_matrix(o));
+			p = p->parent;
+			t = dobject_local_matrix(p);
+			if(p->mflag & (MFLAG_ROTATE | MFLAG_SCALE | MFLAG_SKEW))
+			{
+				matrix_multiply(m, m, t);
+			}
+			else
+			{
+				m->tx += t->tx;
+				m->ty += t->ty;
+			}
 		}
 		o->mflag &= ~MFLAG_GLOBAL_MATRIX;
 	}
 	return m;
 }
 
-static void dobject_draw_image(lua_State * L, struct ldobject_t * o)
+static inline struct rectangle_t * dobject_global_bounds(struct ldobject_t * o)
 {
-	struct display_t * disp = ((struct vmctx_t *)luahelper_vmctx(L))->disp;
+	struct rectangle_t * r = &o->global_bounds;
+	if(o->mflag & MFLAG_GLOBAL_BOUNDS)
+	{
+		r->x = 0;
+		r->y = 0;
+		r->w = o->width;
+		r->h = o->height;
+		matrix_transform_bounds(dobject_global_matrix(o), &r->x, &r->y, &r->w, &r->h);
+		r->w -= r->x;
+		r->h -= r->y;
+		o->mflag &= ~MFLAG_GLOBAL_BOUNDS;
+	}
+	return r;
+}
+
+enum layout_direction_t {
+	LAYOUT_DIRECTION_ROW 			= 0,
+	LAYOUT_DIRECTION_ROW_REVERSE	= 1,
+	LAYOUT_DIRECTION_COLUMN			= 2,
+	LAYOUT_DIRECTION_COLUMN_REVERSE	= 3,
+};
+
+enum layout_justify_t {
+	LAYOUT_JUSTIFY_START			= 0,
+	LAYOUT_JUSTIFY_END				= 1,
+	LAYOUT_JUSTIFY_CENTER			= 2,
+	LAYOUT_JUSTIFY_BETWEEN			= 3,
+	LAYOUT_JUSTIFY_AROUND			= 4,
+	LAYOUT_JUSTIFY_EVENLY			= 5,
+};
+
+enum layout_align_t {
+	LAYOUT_ALIGN_START				= 0,
+	LAYOUT_ALIGN_END				= 1,
+	LAYOUT_ALIGN_CENTER				= 2,
+	LAYOUT_ALIGN_STRETCH			= 3,
+};
+
+enum layout_align_self_t {
+	LAYOUT_ALIGN_SELF_AUTO			= 0,
+	LAYOUT_ALIGN_SELF_START			= 1,
+	LAYOUT_ALIGN_SELF_END			= 2,
+	LAYOUT_ALIGN_SELF_CENTER		= 3,
+	LAYOUT_ALIGN_SELF_STRETCH		= 4,
+};
+
+static inline void dobject_layout_set_enable(struct ldobject_t * o, int enable)
+{
+	o->layout.style &= ~(0x1 << 0);
+	o->layout.style |= (enable ? 1 : 0) << 0;
+}
+
+static inline int dobject_layout_get_enable(struct ldobject_t * o)
+{
+	return (o->layout.style >> 0) & 0x1;
+}
+
+static inline void dobject_layout_set_special(struct ldobject_t * o, int enable)
+{
+	o->layout.style &= ~(0x1 << 01);
+	o->layout.style |= (enable ? 1 : 0) << 1;
+}
+
+static inline int dobject_layout_get_special(struct ldobject_t * o)
+{
+	return (o->layout.style >> 1) & 0x1;
+}
+
+static inline void dobject_layout_set_direction(struct ldobject_t * o, enum layout_direction_t direction)
+{
+	o->layout.style &= ~(0x3 << 2);
+	o->layout.style |= direction << 2;
+}
+
+static inline enum layout_direction_t dobject_layout_get_direction(struct ldobject_t * o)
+{
+	return (o->layout.style >> 2) & 0x3;
+}
+
+static inline void dobject_layout_set_justify(struct ldobject_t * o, enum layout_justify_t justify)
+{
+	o->layout.style &= ~(0xf << 4);
+	o->layout.style |= justify << 4;
+}
+
+static inline enum layout_justify_t dobject_layout_get_justify(struct ldobject_t * o)
+{
+	return (o->layout.style >> 4) & 0xf;
+}
+
+static inline void dobject_layout_set_align(struct ldobject_t * o, enum layout_align_t align)
+{
+	o->layout.style &= ~(0xf << 8);
+	o->layout.style |= align << 8;
+}
+
+static inline enum layout_align_t dobject_layout_get_align(struct ldobject_t * o)
+{
+	return (o->layout.style >> 8) & 0xf;
+}
+
+static inline void dobject_layout_set_align_self(struct ldobject_t * o, enum layout_align_self_t align)
+{
+	o->layout.style &= ~(0xf << 12);
+	o->layout.style |= align << 12;
+}
+
+static inline enum layout_align_self_t dobject_layout_get_align_self(struct ldobject_t * o)
+{
+	return (o->layout.style >> 12) & 0xf;
+}
+
+static inline double dobject_layout_main_leading_margin(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			return o->margin.left;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			return o->margin.top;
+		default:
+			break;
+		}
+	}
+	return o->margin.left;
+}
+
+static inline double dobject_layout_cross_leading_margin(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			return o->margin.top;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			return o->margin.left;
+		default:
+			break;
+		}
+	}
+	return o->margin.top;
+}
+
+static inline double dobject_layout_main_trailing_margin(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			return o->margin.right;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			return o->margin.bottom;
+		default:
+			break;
+		}
+	}
+	return o->margin.right;
+}
+
+static inline double dobject_layout_cross_trailing_margin(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			return o->margin.bottom;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			return o->margin.right;
+		default:
+			break;
+		}
+	}
+	return o->margin.bottom;
+}
+
+static inline double dobject_layout_main_margin(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			return o->margin.left + o->margin.right;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			return o->margin.top + o->margin.bottom;
+		default:
+			break;
+		}
+	}
+	return o->margin.left + o->margin.right;
+}
+
+static inline double dobject_layout_cross_margin(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			return o->margin.top + o->margin.bottom;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			return o->margin.left + o->margin.right;
+		default:
+			break;
+		}
+	}
+	return o->margin.top + o->margin.bottom;
+}
+
+static inline double dobject_layout_main_size(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	double basis = o->layout.basis;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			if(basis <= 0.0)
+			{
+				if(isnan(o->layout.width))
+					o->layout.width = o->width;
+				basis = o->layout.width;
+			}
+			else if(basis <= 1.0)
+			{
+				basis = parent->width * basis;
+			}
+			break;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			if(basis <= 0.0)
+			{
+				if(isnan(o->layout.height))
+					o->layout.height = o->height;
+				basis = o->layout.height;
+			}
+			else if(basis <= 1.0)
+			{
+				basis = parent->height * basis;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	return basis;
+}
+
+static inline double dobject_layout_cross_size(struct ldobject_t * o)
+{
+	struct ldobject_t * parent = o->parent;
+	if(parent)
+	{
+		switch(dobject_layout_get_direction(parent))
+		{
+		case LAYOUT_DIRECTION_ROW:
+		case LAYOUT_DIRECTION_ROW_REVERSE:
+			if(isnan(o->layout.height))
+				o->layout.height = o->height;
+			return o->layout.height;
+		case LAYOUT_DIRECTION_COLUMN:
+		case LAYOUT_DIRECTION_COLUMN_REVERSE:
+			if(isnan(o->layout.width))
+				o->layout.width = o->width;
+			return o->layout.width;
+		default:
+			break;
+		}
+	}
+	if(isnan(o->layout.height))
+		o->layout.height = o->height;
+	return o->layout.height;
+}
+
+static inline double dobject_layout_container_main_size(struct ldobject_t * o)
+{
+	switch(dobject_layout_get_direction(o))
+	{
+	case LAYOUT_DIRECTION_ROW:
+	case LAYOUT_DIRECTION_ROW_REVERSE:
+		return o->width;
+	case LAYOUT_DIRECTION_COLUMN:
+	case LAYOUT_DIRECTION_COLUMN_REVERSE:
+		return o->height;
+	default:
+		break;
+	}
+	return o->width;
+}
+
+static inline double dobject_layout_container_cross_size(struct ldobject_t * o)
+{
+	switch(dobject_layout_get_direction(o))
+	{
+	case LAYOUT_DIRECTION_ROW:
+	case LAYOUT_DIRECTION_ROW_REVERSE:
+		return o->height;
+	case LAYOUT_DIRECTION_COLUMN:
+	case LAYOUT_DIRECTION_COLUMN_REVERSE:
+		return o->width;
+	default:
+		break;
+	}
+	return o->height;
+}
+
+static void dobject_layout(struct ldobject_t * o)
+{
+	struct ldobject_t * pos;
+	double consumed, grow, shrink, cms, ccs;
+	double space, offset, between;
+	double basis, ms, cp, cs;
+	enum layout_direction_t direction;
+	enum layout_align_t align;
+	int count, n;
+
+	if(list_empty(&o->children))
+		return;
+
+	consumed = 0;
+	grow = 0;
+	shrink = 0;
+	count = 0;
+	n = 0;
+	list_for_each_entry(pos, &o->children, entry)
+	{
+		if(dobject_layout_get_enable(pos))
+		{
+			if(dobject_layout_get_special(pos))
+			{
+				n++;
+			}
+			else
+			{
+				basis = dobject_layout_main_size(pos);
+				consumed += basis + dobject_layout_main_margin(pos);
+				grow += pos->layout.grow;
+				shrink += pos->layout.shrink * basis;
+				count++;
+			}
+		}
+	}
+
+	if((count > 0) || (n > 0))
+	{
+		cms = dobject_layout_container_main_size(o);
+		ccs = dobject_layout_container_cross_size(o);
+		direction = dobject_layout_get_direction(o);
+		align = dobject_layout_get_align(o);
+		space = cms - consumed;
+		offset = 0;
+		between = 0;
+		if((space > 0) && (grow == 0))
+		{
+			switch(dobject_layout_get_justify(o))
+			{
+			case LAYOUT_JUSTIFY_START:
+				break;
+			case LAYOUT_JUSTIFY_END:
+				offset = space;
+				break;
+			case LAYOUT_JUSTIFY_CENTER:
+				offset = space / 2;
+				break;
+			case LAYOUT_JUSTIFY_BETWEEN:
+				if(count > 1)
+					between = space / (count - 1);
+				break;
+			case LAYOUT_JUSTIFY_AROUND:
+				if(count > 0)
+					between = space / count;
+				offset = between / 2;
+				break;
+			case LAYOUT_JUSTIFY_EVENLY:
+				if(count > 0)
+					between = space / (count + 1);
+				offset = between;
+				break;
+			default:
+				break;
+			}
+		}
+
+		list_for_each_entry(pos, &o->children, entry)
+		{
+			if(dobject_layout_get_enable(pos))
+			{
+				if(dobject_layout_get_special(pos))
+				{
+					pos->layout.x = 0;
+					pos->layout.y = 0;
+					pos->layout.w = o->width;
+					pos->layout.h = o->height;
+				}
+				else
+				{
+					switch(dobject_layout_get_align_self(pos))
+					{
+					case LAYOUT_ALIGN_SELF_AUTO:
+						break;
+					case LAYOUT_ALIGN_SELF_START:
+						align = LAYOUT_ALIGN_START;
+						break;
+					case LAYOUT_ALIGN_SELF_END:
+						align = LAYOUT_ALIGN_END;
+						break;
+					case LAYOUT_ALIGN_SELF_CENTER:
+						align = LAYOUT_ALIGN_CENTER;
+						break;
+					case LAYOUT_ALIGN_SELF_STRETCH:
+						align = LAYOUT_ALIGN_STRETCH;
+						break;
+					default:
+						break;
+					}
+
+					switch(align)
+					{
+					case LAYOUT_ALIGN_START:
+						cs = dobject_layout_cross_size(pos);
+						cp = dobject_layout_cross_leading_margin(pos);
+						break;
+					case LAYOUT_ALIGN_END:
+						cs = dobject_layout_cross_size(pos);
+						cp = ccs - (cs + dobject_layout_cross_trailing_margin(pos));
+						break;
+					case LAYOUT_ALIGN_CENTER:
+						cs = dobject_layout_cross_size(pos);
+						cp = (ccs - (cs + dobject_layout_cross_margin(pos))) / 2 + dobject_layout_cross_leading_margin(pos);
+						break;
+					case LAYOUT_ALIGN_STRETCH:
+						cs = ccs - dobject_layout_cross_margin(pos);
+						cp = dobject_layout_cross_leading_margin(pos);
+						break;
+					default:
+						cs = dobject_layout_cross_size(pos);
+						cp = dobject_layout_cross_leading_margin(pos);
+						break;
+					}
+
+					ms = basis = dobject_layout_main_size(pos);
+					if((space >= 0) && (pos->layout.grow > 0))
+						ms += space * (pos->layout.grow / grow);
+					else if((space < 0) && (pos->layout.shrink > 0))
+						ms += space * (pos->layout.shrink * basis / shrink);
+
+					switch(direction)
+					{
+					case LAYOUT_DIRECTION_ROW:
+						pos->layout.h = cs;
+						pos->layout.y = cp;
+						pos->layout.w = ms;
+						pos->layout.x = offset + dobject_layout_main_leading_margin(pos);
+						break;
+					case LAYOUT_DIRECTION_ROW_REVERSE:
+						pos->layout.h = cs;
+						pos->layout.y = cp;
+						pos->layout.w = ms;
+						pos->layout.x = cms - (offset + dobject_layout_main_trailing_margin(pos) + ms);
+						break;
+					case LAYOUT_DIRECTION_COLUMN:
+						pos->layout.w = cs;
+						pos->layout.x = cp;
+						pos->layout.h = ms;
+						pos->layout.y = offset + dobject_layout_main_leading_margin(pos);
+						break;
+					case LAYOUT_DIRECTION_COLUMN_REVERSE:
+						pos->layout.w = cs;
+						pos->layout.x = cp;
+						pos->layout.h = ms;
+						pos->layout.y = cms - (offset + dobject_layout_main_trailing_margin(pos) + ms);
+						break;
+					default:
+						break;
+					}
+					offset = offset + ms + dobject_layout_main_margin(pos) + between;
+				}
+
+				pos->layout.x = round(pos->layout.x);
+				pos->layout.y = round(pos->layout.y);
+				pos->layout.w = round(pos->layout.w);
+				pos->layout.h = round(pos->layout.h);
+				if(pos->layout.w < 1)
+					pos->layout.w = 1;
+				if(pos->layout.h < 1)
+					pos->layout.h = 1;
+			}
+		}
+	}
+
+	list_for_each_entry(pos, &o->children, entry)
+	{
+		if(dobject_layout_get_enable(pos))
+		{
+			pos->mflag = MFLAG_LOCAL_MATRIX | MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS;
+			pos->rotation = 0;
+			pos->skewx = 0;
+			pos->skewy = 0;
+			pos->anchorx = 0;
+			pos->anchory = 0;
+			pos->x = pos->layout.x;
+			pos->y = pos->layout.y;
+			if((pos->x == 0.0) && (pos->y == 0.0))
+				pos->mflag &= ~MFLAG_TRANSLATE;
+			else
+				pos->mflag |= MFLAG_TRANSLATE;
+			switch(pos->dtype)
+			{
+			case DOBJECT_TYPE_CONTAINER:
+				pos->scalex = 1.0;
+				pos->scaley = 1.0;
+				pos->width = pos->layout.w;
+				pos->height = pos->layout.h;
+				break;
+			case DOBJECT_TYPE_IMAGE:
+				if(pos->width != 0.0 && pos->height != 0.0)
+				{
+					pos->scalex = pos->layout.w / pos->width;
+					pos->scaley = pos->layout.h / pos->height;
+				}
+				break;
+			case DOBJECT_TYPE_NINEPATCH:
+				pos->scalex = 1.0;
+				pos->scaley = 1.0;
+				pos->width = pos->layout.w;
+				pos->height = pos->layout.h;
+				ninepatch_stretch(pos->priv, pos->width, pos->height);
+				break;
+			case DOBJECT_TYPE_SHAPE:
+				if(pos->width != 0.0 && pos->height != 0.0)
+				{
+					pos->scalex = pos->layout.w / pos->width;
+					pos->scaley = pos->layout.h / pos->height;
+				}
+				break;
+			case DOBJECT_TYPE_TEXT:
+				if(pos->width != 0.0 && pos->height != 0.0)
+				{
+					pos->scalex = pos->layout.w / pos->width;
+					pos->scaley = pos->layout.h / pos->height;
+				}
+				break;
+			default:
+				break;
+			}
+			if((pos->scalex == 1.0) && (pos->scaley == 1.0))
+				pos->mflag &= ~MFLAG_SCALE;
+			else
+				pos->mflag |= MFLAG_SCALE;
+		}
+		dobject_layout(pos);
+	}
+}
+
+static void dobject_draw_image(struct ldobject_t * o, struct display_t * disp)
+{
 	struct limage_t * img = o->priv;
 	cairo_t * cr = disp->cr;
 	cairo_save(cr);
-	cairo_set_matrix(cr, dobject_global_matrix(o));
+	cairo_set_matrix(cr, (cairo_matrix_t *)dobject_global_matrix(o));
 	cairo_set_source_surface(cr, img->cs, 0, 0);
 	cairo_paint_with_alpha(cr, o->alpha);
 	cairo_restore(cr);
 }
 
-static void dobject_draw_ninepatch(lua_State * L, struct ldobject_t * o)
+static void dobject_draw_ninepatch(struct ldobject_t * o, struct display_t * disp)
 {
-	struct display_t * disp = ((struct vmctx_t *)luahelper_vmctx(L))->disp;
 	struct lninepatch_t * ninepatch = o->priv;
 	cairo_t * cr = disp->cr;
 	cairo_save(cr);
-	cairo_set_matrix(cr, dobject_global_matrix(o));
+	cairo_set_matrix(cr, (cairo_matrix_t *)dobject_global_matrix(o));
 	if(ninepatch->lt)
 	{
 		cairo_save(cr);
@@ -219,28 +811,26 @@ static void dobject_draw_ninepatch(lua_State * L, struct ldobject_t * o)
 	cairo_restore(cr);
 }
 
-static void dobject_draw_shape(lua_State * L, struct ldobject_t * o)
+static void dobject_draw_shape(struct ldobject_t * o, struct display_t * disp)
 {
-	struct display_t * disp = ((struct vmctx_t *)luahelper_vmctx(L))->disp;
 	struct lshape_t * shape = o->priv;
 	cairo_t * cr = disp->cr;
 	cairo_save(cr);
-	cairo_set_matrix(cr, dobject_global_matrix(o));
+	cairo_set_matrix(cr, (cairo_matrix_t *)dobject_global_matrix(o));
 	cairo_set_source_surface(cr, shape->cs, 0, 0);
 	cairo_paint_with_alpha(cr, o->alpha);
 	cairo_restore(cr);
 }
 
-static void dobject_draw_text(lua_State * L, struct ldobject_t * o)
+static void dobject_draw_text(struct ldobject_t * o, struct display_t * disp)
 {
-	struct display_t * disp = ((struct vmctx_t *)luahelper_vmctx(L))->disp;
 	struct ltext_t * text = o->priv;
-	cairo_matrix_t * m = dobject_global_matrix(o);
+	struct matrix_t * m = dobject_global_matrix(o);
 	cairo_t * cr = disp->cr;
 	cairo_save(cr);
 	cairo_set_scaled_font(cr, text->font);
-	cairo_move_to(cr, m->x0, m->y0);
-	cairo_set_matrix(cr, m);
+	cairo_move_to(cr, m->tx, m->ty);
+	cairo_set_matrix(cr, (cairo_matrix_t *)m);
 	cairo_move_to(cr, 0, text->metric.height);
 	cairo_text_path(cr, text->utf8);
 	cairo_set_source(cr, text->pattern);
@@ -252,7 +842,7 @@ static int l_dobject_new(lua_State * L)
 {
 	struct ldobject_t * o = lua_newuserdata(L, sizeof(struct ldobject_t));
 
-	o->parent = o;
+	o->parent = NULL;
 	init_list_head(&o->entry);
 	init_list_head(&o->children);
 
@@ -268,40 +858,51 @@ static int l_dobject_new(lua_State * L)
 	o->anchorx = 0;
 	o->anchory = 0;
 	o->alpha = 1;
-	o->alignment = ALIGN_NONE;
 	o->margin.left = 0;
 	o->margin.top = 0;
 	o->margin.right = 0;
 	o->margin.bottom = 0;
-	o->type = COLLIDER_TYPE_NONE;
+	o->layout.style = 0;
+	o->layout.grow = 0;
+	o->layout.shrink = 1;
+	o->layout.basis = 0;
+	o->layout.width = NAN;
+	o->layout.height = NAN;
+	o->ctype = COLLIDER_TYPE_NONE;
 	o->visible = 1;
 	o->touchable = 1;
 	o->mflag = 0;
-	cairo_matrix_init_identity(&o->local_matrix);
-	cairo_matrix_init_identity(&o->global_matrix);
+	matrix_init_identity(&o->local_matrix);
+	matrix_init_identity(&o->global_matrix);
+	rectangle_init(&o->global_bounds, o->x, o->y, o->width, o->height);
 
 	if(luaL_testudata(L, 3, MT_IMAGE))
 	{
+		o->dtype = DOBJECT_TYPE_IMAGE;
 		o->draw = dobject_draw_image;
 		o->priv = lua_touserdata(L, 3);
 	}
 	else if(luaL_testudata(L, 3, MT_NINEPATCH))
 	{
+		o->dtype = DOBJECT_TYPE_NINEPATCH;
 		o->draw = dobject_draw_ninepatch;
 		o->priv = lua_touserdata(L, 3);
 	}
 	else if(luaL_testudata(L, 3, MT_SHAPE))
 	{
+		o->dtype = DOBJECT_TYPE_SHAPE;
 		o->draw = dobject_draw_shape;
 		o->priv = lua_touserdata(L, 3);
 	}
 	else if(luaL_testudata(L, 3, MT_TEXT))
 	{
+		o->dtype = DOBJECT_TYPE_TEXT;
 		o->draw = dobject_draw_text;
 		o->priv = lua_touserdata(L, 3);
 	}
 	else
 	{
+		o->dtype = DOBJECT_TYPE_CONTAINER;
 		o->draw = NULL;
 		o->priv = NULL;
 	}
@@ -318,7 +919,7 @@ static const luaL_Reg l_dobject[] = {
 static int m_dobject_gc(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	if(o->type == COLLIDER_TYPE_POLYGON)
+	if(o->ctype == COLLIDER_TYPE_POLYGON)
 	{
 		if((o->hit.polygon.length > 0) && o->hit.polygon.points)
 		{
@@ -332,12 +933,12 @@ static int m_dobject_gc(lua_State * L)
 
 static void dobject_mark_with_children(struct ldobject_t * o, int mark)
 {
-	struct ldobject_t * pos, * n;
+	struct ldobject_t * pos;
 
 	if(o)
 	{
 		o->mflag |= mark;
-		list_for_each_entry_safe(pos, n, &(o->children), entry)
+		list_for_each_entry(pos, &o->children, entry)
 		{
 			dobject_mark_with_children(pos, mark);
 		}
@@ -355,7 +956,7 @@ static int m_add_child(lua_State * L)
 			list_add_tail(&c->entry, &o->children);
 		else
 			list_add(&c->entry, &o->children);
-		dobject_mark_with_children(c, MFLAG_GLOBAL_MATRIX);
+		dobject_mark_with_children(c, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	}
 	return 0;
 }
@@ -366,9 +967,9 @@ static int m_remove_child(lua_State * L)
 	struct ldobject_t * c = luaL_checkudata(L, 2, MT_DOBJECT);
 	if(c->parent == o)
 	{
-		c->parent = c;
+		c->parent = NULL;
 		list_del_init(&c->entry);
-		dobject_mark_with_children(c, MFLAG_GLOBAL_MATRIX);
+		dobject_mark_with_children(c, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	}
 	return 0;
 }
@@ -376,7 +977,7 @@ static int m_remove_child(lua_State * L)
 static int m_to_front(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	if(o->parent && (o->parent != o))
+	if(o->parent)
 		list_move(&o->entry, &o->parent->children);
 	return 0;
 }
@@ -384,7 +985,7 @@ static int m_to_front(lua_State * L)
 static int m_to_back(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	if(o->parent && (o->parent != o))
+	if(o->parent)
 		list_move_tail(&o->entry, &o->parent->children);
 	return 0;
 }
@@ -393,8 +994,10 @@ static int m_set_width(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	o->width = luaL_checknumber(L, 2);
+	o->layout.width = NAN;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
 	return 0;
 }
 
@@ -409,8 +1012,10 @@ static int m_set_height(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	o->height = luaL_checknumber(L, 2);
+	o->layout.height = NAN;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
 	return 0;
 }
 
@@ -426,8 +1031,11 @@ static int m_set_size(lua_State * L)
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	o->width = luaL_checknumber(L, 2);
 	o->height = luaL_checknumber(L, 3);
+	o->layout.width = NAN;
+	o->layout.height = NAN;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
 	return 0;
 }
 
@@ -448,7 +1056,7 @@ static int m_set_x(lua_State * L)
 	else
 		o->mflag |= MFLAG_TRANSLATE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -468,7 +1076,7 @@ static int m_set_y(lua_State * L)
 	else
 		o->mflag |= MFLAG_TRANSLATE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -489,7 +1097,7 @@ static int m_set_position(lua_State * L)
 	else
 		o->mflag |= MFLAG_TRANSLATE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -510,14 +1118,14 @@ static int m_set_rotation(lua_State * L)
 	else
 		o->mflag |= MFLAG_ROTATE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
 static int m_get_rotation(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	lua_pushnumber(L, fmod(o->rotation / (M_PI / 180.0), 360.0));
+	lua_pushnumber(L, o->rotation * (180.0 / M_PI));
 	return 1;
 }
 
@@ -530,7 +1138,7 @@ static int m_set_scale_x(lua_State * L)
 	else
 		o->mflag |= MFLAG_SCALE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -550,7 +1158,7 @@ static int m_set_scale_y(lua_State * L)
 	else
 		o->mflag |= MFLAG_SCALE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -571,7 +1179,7 @@ static int m_set_scale(lua_State * L)
 	else
 		o->mflag |= MFLAG_SCALE;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -592,14 +1200,14 @@ static int m_set_skew_x(lua_State * L)
 	else
 		o->mflag |= MFLAG_SKEW;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
 static int m_get_skew_x(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	lua_pushnumber(L, o->skewx);
+	lua_pushnumber(L, o->skewx * (180.0 / M_PI));
 	return 1;
 }
 
@@ -612,14 +1220,14 @@ static int m_set_skew_y(lua_State * L)
 	else
 		o->mflag |= MFLAG_SKEW;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
 static int m_get_skew_y(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	lua_pushnumber(L, o->skewy);
+	lua_pushnumber(L, o->skewy * (180.0 / M_PI));
 	return 1;
 }
 
@@ -633,15 +1241,15 @@ static int m_set_skew(lua_State * L)
 	else
 		o->mflag |= MFLAG_SKEW;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
 static int m_get_skew(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	lua_pushnumber(L, fmod(o->skewx / (M_PI / 180.0), 360.0));
-	lua_pushnumber(L, fmod(o->skewy / (M_PI / 180.0), 360.0));
+	lua_pushnumber(L, o->skewx * (180.0 / M_PI));
+	lua_pushnumber(L, o->skewy * (180.0 / M_PI));
 	return 2;
 }
 
@@ -655,7 +1263,7 @@ static int m_set_archor(lua_State * L)
 	else
 		o->mflag |= MFLAG_ANCHOR;
 	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
+	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX | MFLAG_GLOBAL_BOUNDS);
 	return 0;
 }
 
@@ -681,20 +1289,6 @@ static int m_get_alpha(lua_State * L)
 	return 1;
 }
 
-static int m_set_alignment(lua_State * L)
-{
-	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	o->alignment = (enum alignment_t)luaL_checkinteger(L, 2);
-	return 0;
-}
-
-static int m_get_alignment(lua_State * L)
-{
-	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	lua_pushinteger(L, o->alignment);
-	return 1;
-}
-
 static int m_set_margin(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
@@ -702,6 +1296,7 @@ static int m_set_margin(lua_State * L)
 	o->margin.top = luaL_optnumber(L, 3, 0);
 	o->margin.right = luaL_optnumber(L, 4, 0);
 	o->margin.bottom = luaL_optnumber(L, 5, 0);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
 	return 0;
 }
 
@@ -715,11 +1310,302 @@ static int m_get_margin(lua_State * L)
 	return 4;
 }
 
+static int m_set_layout_enable(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	dobject_layout_set_enable(o, lua_toboolean(L, 2));
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_enable(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	lua_pushboolean(L, dobject_layout_get_enable(o));
+	return 1;
+}
+
+static int m_set_layout_special(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	dobject_layout_set_special(o, lua_toboolean(L, 2));
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_special(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	lua_pushboolean(L, dobject_layout_get_special(o));
+	return 1;
+}
+
+static int m_set_layout_direction(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	const char * type = luaL_optstring(L, 2, "row");
+	switch(shash(type))
+	{
+	case 0x0b88a69d: /* "row" */
+		dobject_layout_set_direction(o, LAYOUT_DIRECTION_ROW);
+		break;
+	case 0xf84b1686: /* "row-reverse" */
+		dobject_layout_set_direction(o, LAYOUT_DIRECTION_ROW_REVERSE);
+		break;
+	case 0xf6e39413: /* "column" */
+		dobject_layout_set_direction(o, LAYOUT_DIRECTION_COLUMN);
+		break;
+	case 0x839f19fc: /* "column-reverse" */
+		dobject_layout_set_direction(o, LAYOUT_DIRECTION_COLUMN_REVERSE);
+		break;
+	default:
+		break;
+	}
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_direction(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	switch(dobject_layout_get_direction(o))
+	{
+	case LAYOUT_DIRECTION_ROW:
+		lua_pushstring(L, "row");
+		break;
+	case LAYOUT_DIRECTION_ROW_REVERSE:
+		lua_pushstring(L, "row-reverse");
+		break;
+	case LAYOUT_DIRECTION_COLUMN:
+		lua_pushstring(L, "column");
+		break;
+	case LAYOUT_DIRECTION_COLUMN_REVERSE:
+		lua_pushstring(L, "column-reverse");
+		break;
+	default:
+		lua_pushnil(L);
+		break;
+	}
+	return 1;
+}
+
+static int m_set_layout_justify(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	const char * type = luaL_optstring(L, 2, "start");
+	switch(shash(type))
+	{
+	case 0x106149d3: /* "start" */
+		dobject_layout_set_justify(o, LAYOUT_JUSTIFY_START);
+		break;
+	case 0x0b886f1c: /* "end" */
+		dobject_layout_set_justify(o, LAYOUT_JUSTIFY_END);
+		break;
+	case 0xf62fb286: /* "center" */
+		dobject_layout_set_justify(o, LAYOUT_JUSTIFY_CENTER);
+		break;
+	case 0x6f99fd6f: /* "between" */
+		dobject_layout_set_justify(o, LAYOUT_JUSTIFY_BETWEEN);
+		break;
+	case 0xf271318e: /* "around" */
+		dobject_layout_set_justify(o, LAYOUT_JUSTIFY_AROUND);
+		break;
+	case 0xfc089c58: /* "evenly" */
+		dobject_layout_set_justify(o, LAYOUT_JUSTIFY_EVENLY);
+		break;
+	default:
+		break;
+	}
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_justify(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	switch(dobject_layout_get_justify(o))
+	{
+	case LAYOUT_JUSTIFY_START:
+		lua_pushstring(L, "start");
+		break;
+	case LAYOUT_JUSTIFY_END:
+		lua_pushstring(L, "end");
+		break;
+	case LAYOUT_JUSTIFY_CENTER:
+		lua_pushstring(L, "center");
+		break;
+	case LAYOUT_JUSTIFY_BETWEEN:
+		lua_pushstring(L, "between");
+		break;
+	case LAYOUT_JUSTIFY_AROUND:
+		lua_pushstring(L, "around");
+		break;
+	case LAYOUT_JUSTIFY_EVENLY:
+		lua_pushstring(L, "evenly");
+		break;
+	default:
+		lua_pushnil(L);
+		break;
+	}
+	return 1;
+}
+
+static int m_set_layout_align(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	const char * type = luaL_optstring(L, 2, "start");
+	switch(shash(type))
+	{
+	case 0x106149d3: /* "start" */
+		dobject_layout_set_align(o, LAYOUT_ALIGN_START);
+		break;
+	case 0x0b886f1c: /* "end" */
+		dobject_layout_set_align(o, LAYOUT_ALIGN_END);
+		break;
+	case 0xf62fb286: /* "center" */
+		dobject_layout_set_align(o, LAYOUT_ALIGN_CENTER);
+		break;
+	case 0xaf079762: /* "stretch" */
+		dobject_layout_set_align(o, LAYOUT_ALIGN_STRETCH);
+		break;
+	default:
+		break;
+	}
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_align(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	switch(dobject_layout_get_align(o))
+	{
+	case LAYOUT_ALIGN_START:
+		lua_pushstring(L, "start");
+		break;
+	case LAYOUT_ALIGN_END:
+		lua_pushstring(L, "end");
+		break;
+	case LAYOUT_ALIGN_CENTER:
+		lua_pushstring(L, "center");
+		break;
+	case LAYOUT_ALIGN_STRETCH:
+		lua_pushstring(L, "stretch");
+		break;
+	default:
+		lua_pushnil(L);
+		break;
+	}
+	return 1;
+}
+
+static int m_set_layout_align_self(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	const char * type = luaL_optstring(L, 2, "auto");
+	switch(shash(type))
+	{
+	case 0x7c94415e: /* "auto" */
+		dobject_layout_set_align_self(o, LAYOUT_ALIGN_SELF_AUTO);
+		break;
+	case 0x106149d3: /* "start" */
+		dobject_layout_set_align_self(o, LAYOUT_ALIGN_SELF_START);
+		break;
+	case 0x0b886f1c: /* "end" */
+		dobject_layout_set_align_self(o, LAYOUT_ALIGN_SELF_END);
+		break;
+	case 0xf62fb286: /* "center" */
+		dobject_layout_set_align_self(o, LAYOUT_ALIGN_SELF_CENTER);
+		break;
+	case 0xaf079762: /* "stretch" */
+		dobject_layout_set_align_self(o, LAYOUT_ALIGN_SELF_STRETCH);
+		break;
+	default:
+		break;
+	}
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_align_self(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	switch(dobject_layout_get_align_self(o))
+	{
+	case LAYOUT_ALIGN_SELF_AUTO:
+		lua_pushstring(L, "auto");
+		break;
+	case LAYOUT_ALIGN_SELF_START:
+		lua_pushstring(L, "start");
+		break;
+	case LAYOUT_ALIGN_SELF_END:
+		lua_pushstring(L, "end");
+		break;
+	case LAYOUT_ALIGN_SELF_CENTER:
+		lua_pushstring(L, "center");
+		break;
+	case LAYOUT_ALIGN_SELF_STRETCH:
+		lua_pushstring(L, "stretch");
+		break;
+	default:
+		lua_pushnil(L);
+		break;
+	}
+	return 1;
+}
+
+static int m_set_layout_grow(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	o->layout.grow = luaL_checknumber(L, 2);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_grow(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	lua_pushnumber(L, o->layout.grow);
+	return 1;
+}
+
+static int m_set_layout_shrink(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	o->layout.shrink = luaL_checknumber(L, 2);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_shrink(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	lua_pushnumber(L, o->layout.shrink);
+	return 1;
+}
+
+static int m_set_layout_basis(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	o->layout.basis = luaL_checknumber(L, 2);
+	dobject_layout((o->parent && dobject_layout_get_enable(o)) ? o->parent : o);
+	return 0;
+}
+
+static int m_get_layout_basis(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	lua_pushnumber(L, o->layout.basis);
+	return 1;
+}
+
 static int m_set_collider(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	const char * type = luaL_optstring(L, 2, "");
-	if(o->type == COLLIDER_TYPE_POLYGON)
+	double * p = NULL;
+	int i, n = 0;
+	if(o->ctype == COLLIDER_TYPE_POLYGON)
 	{
 		if((o->hit.polygon.length > 0) && o->hit.polygon.points)
 		{
@@ -728,43 +1614,38 @@ static int m_set_collider(lua_State * L)
 			o->hit.polygon.length = 0;
 		}
 	}
-	if(strcmp(type, "circle") == 0)
+	switch(shash(type))
 	{
-		o->type = COLLIDER_TYPE_CIRCLE;
+	case 0xf679fe97: /* "circle" */
+		o->ctype = COLLIDER_TYPE_CIRCLE;
 		o->hit.circle.x = luaL_optnumber(L, 3, o->width / 2);
 		o->hit.circle.y = luaL_optnumber(L, 4, o->height / 2);
 		o->hit.circle.radius = luaL_optnumber(L, 5, (o->width < o->height ? o->width : o->height) / 2);
-	}
-	else if(strcmp(type, "ellipse") == 0)
-	{
-		o->type = COLLIDER_TYPE_ELLIPSE;
+		break;
+	case 0x66448f53: /* "ellipse" */
+		o->ctype = COLLIDER_TYPE_ELLIPSE;
 		o->hit.ellipse.x = luaL_optnumber(L, 3, o->width / 2);
 		o->hit.ellipse.y = luaL_optnumber(L, 4, o->height / 2);
 		o->hit.ellipse.width = luaL_optnumber(L, 5, o->width / 2);
 		o->hit.ellipse.height = luaL_optnumber(L, 6, o->height / 2);
-	}
-	else if(strcmp(type, "rectangle") == 0)
-	{
-		o->type = COLLIDER_TYPE_RECTANGLE;
+		break;
+	case 0xe1f5207a: /* "rectangle" */
+		o->ctype = COLLIDER_TYPE_RECTANGLE;
 		o->hit.rectangle.x = luaL_optnumber(L, 3, 0);
 		o->hit.rectangle.y = luaL_optnumber(L, 4, 0);
 		o->hit.rectangle.width = luaL_optnumber(L, 5, o->width);
 		o->hit.rectangle.height = luaL_optnumber(L, 6, o->height);
-	}
-	else if(strcmp(type, "roundedRectangle") == 0)
-	{
-		o->type = COLLIDER_TYPE_ROUND_RECTANGLE;
+		break;
+	case 0x4b99d0b8: /* "rounded-rectangle" */
+		o->ctype = COLLIDER_TYPE_ROUNDED_RECTANGLE;
 		o->hit.rounded_rectangle.x = luaL_optnumber(L, 3, 0);
 		o->hit.rounded_rectangle.y = luaL_optnumber(L, 4, 0);
 		o->hit.rounded_rectangle.width = luaL_optnumber(L, 5, o->width);
 		o->hit.rounded_rectangle.height = luaL_optnumber(L, 6, o->height);
 		o->hit.rounded_rectangle.radius = luaL_optnumber(L, 7, (o->width < o->height ? o->width : o->height) / 5);
-	}
-	else if(strcmp(type, "polygon") == 0)
-	{
-		double * p = NULL;
-		int i, n = 0;
-		o->type = COLLIDER_TYPE_POLYGON;
+		break;
+	case 0xbc0d44cd: /* "polygon" */
+		o->ctype = COLLIDER_TYPE_POLYGON;
 		if(lua_istable(L, 3))
 		{
 			n = lua_rawlen(L, 3) & ~0x1;
@@ -781,10 +1662,10 @@ static int m_set_collider(lua_State * L)
 		}
 		o->hit.polygon.points = p;
 		o->hit.polygon.length = n;
-	}
-	else
-	{
-		o->type = COLLIDER_TYPE_NONE;
+		break;
+	default:
+		o->ctype = COLLIDER_TYPE_NONE;
+		break;
 	}
 	return 0;
 }
@@ -793,7 +1674,7 @@ static int m_get_collider(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	int i;
-	switch(o->type)
+	switch(o->ctype)
 	{
 	case COLLIDER_TYPE_NONE:
 		lua_pushstring(L, "none");
@@ -818,8 +1699,8 @@ static int m_get_collider(lua_State * L)
 		lua_pushnumber(L, o->hit.rectangle.width);
 		lua_pushnumber(L, o->hit.rectangle.height);
 		return 5;
-	case COLLIDER_TYPE_ROUND_RECTANGLE:
-		lua_pushstring(L, "roundedRectangle");
+	case COLLIDER_TYPE_ROUNDED_RECTANGLE:
+		lua_pushstring(L, "rounded-rectangle");
 		lua_pushnumber(L, o->hit.rounded_rectangle.x);
 		lua_pushnumber(L, o->hit.rounded_rectangle.y);
 		lua_pushnumber(L, o->hit.rounded_rectangle.width);
@@ -877,10 +1758,10 @@ static int m_global_to_local(lua_State * L)
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	double nx, x = luaL_checknumber(L, 2);
 	double ny, y = luaL_checknumber(L, 3);
-	cairo_matrix_t * m = dobject_global_matrix(o);
-	double id = 1.0 / (m->xx * m->yy - m->xy * m->yx);
-	nx = ((x - m->x0) * m->yy + (m->y0 - y) * m->xy) * id;
-	ny = ((y - m->y0) * m->xx + (m->x0 - x) * m->yx) * id;
+	struct matrix_t * m = dobject_global_matrix(o);
+	double id = 1.0 / (m->a * m->d - m->c * m->b);
+	nx = ((x - m->tx) * m->d + (m->ty - y) * m->c) * id;
+	ny = ((y - m->ty) * m->a + (m->tx - x) * m->b) * id;
 	lua_pushnumber(L, nx);
 	lua_pushnumber(L, ny);
 	return 2;
@@ -891,9 +1772,9 @@ static int m_local_to_global(lua_State * L)
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	double nx, x = luaL_checknumber(L, 2);
 	double ny, y = luaL_checknumber(L, 3);
-	cairo_matrix_t * m = dobject_global_matrix(o);
-	nx = m->xx * x + m->xy * y + m->x0;
-	ny = m->yx * x + m->yy * y + m->y0;
+	struct matrix_t * m = dobject_global_matrix(o);
+	nx = m->a * x + m->c * y + m->tx;
+	ny = m->b * x + m->d * y + m->ty;
 	lua_pushnumber(L, nx);
 	lua_pushnumber(L, ny);
 	return 2;
@@ -1003,11 +1884,11 @@ static int m_hit_test_point(lua_State * L)
 	{
 		double nx, x = luaL_checknumber(L, 2);
 		double ny, y = luaL_checknumber(L, 3);
-		cairo_matrix_t * m = dobject_global_matrix(o);
-		double id = 1.0 / (m->xx * m->yy - m->xy * m->yx);
-		nx = ((x - m->x0) * m->yy + (m->y0 - y) * m->xy) * id;
-		ny = ((y - m->y0) * m->xx + (m->x0 - x) * m->yx) * id;
-		switch(o->type)
+		struct matrix_t * m = dobject_global_matrix(o);
+		double id = 1.0 / (m->a * m->d - m->c * m->b);
+		nx = ((x - m->tx) * m->d + (m->ty - y) * m->c) * id;
+		ny = ((y - m->ty) * m->a + (m->tx - x) * m->b) * id;
+		switch(o->ctype)
 		{
 		case COLLIDER_TYPE_NONE:
 			if((nx >= 0) && (nx < o->width) && (ny >= 0) && (ny < o->height))
@@ -1022,7 +1903,7 @@ static int m_hit_test_point(lua_State * L)
 		case COLLIDER_TYPE_RECTANGLE:
 			hit = rectangle_hit_test_point(o, nx, ny);
 			break;
-		case COLLIDER_TYPE_ROUND_RECTANGLE:
+		case COLLIDER_TYPE_ROUNDED_RECTANGLE:
 			hit = rounded_rectangle_hit_test_point(o, nx, ny);
 			break;
 		case COLLIDER_TYPE_POLYGON:
@@ -1039,268 +1920,41 @@ static int m_hit_test_point(lua_State * L)
 static int m_bounds(lua_State * L)
 {
 	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	double x1 = 0;
-	double y1 = 0;
-	double x2 = o->width;
-	double y2 = o->height;
-	_cairo_matrix_transform_bounding_box(dobject_global_matrix(o), &x1, &y1, &x2, &y2, NULL);
-	lua_pushnumber(L, x1);
-	lua_pushnumber(L, y1);
-	lua_pushnumber(L, x2 - x1);
-	lua_pushnumber(L, y2 - y1);
+	struct rectangle_t * r = dobject_global_bounds(o);
+	lua_pushnumber(L, r->x);
+	lua_pushnumber(L, r->y);
+	lua_pushnumber(L, r->w);
+	lua_pushnumber(L, r->h);
 	return 4;
 }
 
-static inline void dobject_translate(struct ldobject_t * o, double dx, double dy)
+static void dobject_draw(struct ldobject_t * o, struct display_t * disp)
 {
-	o->x = o->x + dx;
-	o->y = o->y + dy;
-	if((o->x == 0.0) && (o->y == 0.0))
-		o->mflag &= ~MFLAG_TRANSLATE;
-	else
-		o->mflag |= MFLAG_TRANSLATE;
-	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
-}
+	struct ldobject_t * pos;
 
-static inline void dobject_translate_fill(struct ldobject_t * o, double x, double y, double w, double h)
-{
-	o->x = x;
-	o->y = y;
-	if((o->x == 0.0) && (o->y == 0.0))
-		o->mflag &= ~MFLAG_TRANSLATE;
-	else
-		o->mflag |= MFLAG_TRANSLATE;
-
-	if(o->width != 0.0 && o->height != 0.0)
-	{
-		if(w < 1.0)
-			w = 1.0;
-		if(h < 1.0)
-			h = 1.0;
-		o->scalex = w / o->width;
-		o->scaley = h / o->height;
-		if((o->scalex == 1.0) && (o->scaley == 1.0))
-			o->mflag &= ~MFLAG_SCALE;
-		else
-			o->mflag |= MFLAG_SCALE;
-	}
-	o->rotation = 0;
-	o->skewx = 0;
-	o->skewy = 0;
-	o->anchorx = 0;
-	o->anchory = 0;
-	o->mflag |= MFLAG_LOCAL_MATRIX;
-	dobject_mark_with_children(o, MFLAG_GLOBAL_MATRIX);
-}
-
-static int m_layout(lua_State * L)
-{
-	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
-	struct ldobject_t * c = luaL_checkudata(L, 2, MT_DOBJECT);
-	double rx1 = luaL_optnumber(L, 3, 0);
-	double ry1 = luaL_optnumber(L, 4, 0);
-	double rx2 = luaL_optnumber(L, 5, o->width);
-	double ry2 = luaL_optnumber(L, 6, o->height);
-
-	if(c->alignment <= ALIGN_NONE)
-	{
-	}
-	else if((c->alignment <= ALIGN_CENTER))
-	{
-		double ox1 = rx1;
-		double oy1 = ry1;
-		double ox2 = rx2;
-		double oy2 = ry2;
-		double cx1 = 0 - c->margin.left;
-		double cy1 = 0 - c->margin.top;
-		double cx2 = c->width + c->margin.right;
-		double cy2 = c->height + c->margin.bottom;
-		double dx, dy;
-		_cairo_matrix_transform_bounding_box(dobject_local_matrix(c), &cx1, &cy1, &cx2, &cy2, NULL);
-
-		switch(c->alignment)
-		{
-		case ALIGN_LEFT:
-			dx = ox1 - cx1;
-			dy = 0;
-			rx1 += cx2 - cx1;
-			break;
-		case ALIGN_TOP:
-			dx = 0;
-			dy = oy1 - cy1;
-			ry1 += cy2 - cy1;
-			break;
-		case ALIGN_RIGHT:
-			dx = ox2 - cx2;
-			dy = 0;
-			rx2 -= cx2 - cx1;
-			break;
-		case ALIGN_BOTTOM:
-			dx = 0;
-			dy = oy2 - cy2;
-			ry2 -= cy2 - cy1;
-			break;
-		case ALIGN_LEFT_TOP:
-			dx = ox1 - cx1;
-			dy = oy1 - cy1;
-			rx1 += cx2 - cx1;
-			ry1 += cy2 - cy1;
-			break;
-		case ALIGN_RIGHT_TOP:
-			dx = ox2 - cx2;
-			dy = oy1 - cy1;
-			rx2 -= cx2 - cx1;
-			ry1 += cy2 - cy1;
-			break;
-		case ALIGN_LEFT_BOTTOM:
-			dx = ox1 - cx1;
-			dy = oy2 - cy2;
-			rx1 += cx2 - cx1;
-			ry2 -= cy2 - cy1;
-			break;
-		case ALIGN_RIGHT_BOTTOM:
-			dx = ox2 - cx2;
-			dy = oy2 - cy2;
-			rx2 -= cx2 - cx1;
-			ry2 -= cy2 - cy1;
-			break;
-		case ALIGN_LEFT_CENTER:
-			dx = ox1 - cx1;
-			dy = oy1 - cy1 + ((oy2 - oy1) - (cy2 - cy1)) / 2;
-			rx1 += cx2 - cx1;
-			break;
-		case ALIGN_TOP_CENTER:
-			dx = ox1 - cx1 + ((ox2 - ox1) - (cx2 - cx1)) / 2;
-			dy = oy1 - cy1;
-			ry1 += cy2 - cy1;
-			break;
-		case ALIGN_RIGHT_CENTER:
-			dx = ox2 - cx2;
-			dy = oy1 - cy1 + ((oy2 - oy1) - (cy2 - cy1)) / 2;
-			rx2 -= cx2 - cx1;
-			break;
-		case ALIGN_BOTTOM_CENTER:
-			dx = ox1 - cx1 + ((ox2 - ox1) - (cx2 - cx1)) / 2;
-			dy = oy2 - cy2;
-			ry2 -= cy2 - cy1;
-			break;
-		case ALIGN_HORIZONTAL_CENTER:
-			dx = ox1 - cx1 + ((ox2 - ox1) - (cx2 - cx1)) / 2;
-			dy = 0;
-			break;
-		case ALIGN_VERTICAL_CENTER:
-			dx = 0;
-			dy = oy1 - cy1 + ((oy2 - oy1) - (cy2 - cy1)) / 2;
-			break;
-		case ALIGN_CENTER:
-			dx = ox1 - cx1 + ((ox2 - ox1) - (cx2 - cx1)) / 2;
-			dy = oy1 - cy1 + ((oy2 - oy1) - (cy2 - cy1)) / 2;
-			break;
-		default:
-			dx = 0;
-			dy = 0;
-			break;
-		}
-		dobject_translate(c, dx, dy);
-	}
-	else if((c->alignment <= ALIGN_CENTER_FILL))
-	{
-		double x, y;
-		double w, h;
-
-		switch(c->alignment)
-		{
-		case ALIGN_LEFT_FILL:
-			w = c->width * c->scalex;
-			h = ry2 - ry1 - (c->margin.top + c->margin.bottom);
-			x = rx1 + c->margin.left;
-			y = ry1 + c->margin.top;
-			rx1 += w + c->margin.right;
-			break;
-		case ALIGN_TOP_FILL:
-			w = rx2 - rx1 - (c->margin.left + c->margin.right);
-			h = c->height * c->scaley;
-			x = rx1 + c->margin.left;
-			y = ry1 + c->margin.top;
-			ry1 += h + c->margin.bottom;
-			break;
-		case ALIGN_RIGHT_FILL:
-			w = c->width * c->scalex;
-			h = ry2 - ry1 - (c->margin.top + c->margin.bottom);
-			x = rx2 - w - c->margin.right;
-			y = ry1 + c->margin.top;
-			rx2 -= w + c->margin.left;
-			break;
-		case ALIGN_BOTTOM_FILL:
-			w = rx2 - rx1 - (c->margin.left + c->margin.right);
-			h = c->height * c->scaley;
-			x = rx1 + c->margin.left;
-			y = ry2 - h - c->margin.bottom;
-			ry2 -= h + c->margin.top;
-			break;
-		case ALIGN_HORIZONTAL_FILL:
-			w = rx2 - rx1 - (c->margin.left + c->margin.right);
-			h = c->height * c->scaley;
-			x = rx1 + c->margin.left;
-			y = c->y;
-			break;
-		case ALIGN_VERTICAL_FILL:
-			w = c->width * c->scalex;
-			h = ry2 - ry1 - (c->margin.top + c->margin.bottom);
-			x = c->x;
-			y = ry1 + c->margin.top;
-			break;
-		case ALIGN_CENTER_FILL:
-			w = rx2 - rx1 - (c->margin.left + c->margin.right);
-			h = ry2 - ry1 - (c->margin.top + c->margin.bottom);
-			x = rx1 + c->margin.left;
-			y = ry1 + c->margin.top;
-			break;
-		default:
-			w = c->width * c->scalex;
-			h = c->height * c->scaley;
-			x = c->x;
-			y = c->y;
-			break;
-		}
-		dobject_translate_fill(c, x, y, w, h);
-	}
-
-	lua_pushnumber(L, rx1);
-	lua_pushnumber(L, ry1);
-	lua_pushnumber(L, rx2);
-	lua_pushnumber(L, ry2);
-	return 4;
-}
-
-static int m_draw(lua_State * L)
-{
-	struct display_t * disp = ((struct vmctx_t *)luahelper_vmctx(L))->disp;
-	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
 	if(o->visible)
 	{
 		if(o->draw)
-			o->draw(L, o);
+			o->draw(o, disp);
 		if(disp->showobj)
 		{
 			cairo_t * cr = disp->cr;
 			cairo_save(cr);
-			cairo_set_matrix(cr, dobject_global_matrix(o));
+			cairo_set_matrix(cr, (cairo_matrix_t *)dobject_global_matrix(o));
 			cairo_set_line_width(cr, 1);
 			cairo_rectangle(cr, 0, 0, o->width, o->height);
-			cairo_set_source_rgba(cr, 1, 0, 0, 0.5);
+			cairo_set_source_rgba(cr, 1, 0, 0, 0.6);
 			cairo_stroke(cr);
-			if((o->type != COLLIDER_TYPE_NONE) && o->touchable)
+			if((o->ctype != COLLIDER_TYPE_NONE) && o->touchable)
 			{
-				cairo_matrix_t m;
+				struct matrix_t m;
 				double x, y;
 				double w, h;
 				double r;
 				double * p;
 				int n, i;
 
-				switch(o->type)
+				switch(o->ctype)
 				{
 				case COLLIDER_TYPE_CIRCLE:
 					cairo_new_sub_path(cr);
@@ -1313,7 +1967,7 @@ static int m_draw(lua_State * L)
 					y = o->hit.ellipse.y;
 					w = o->hit.ellipse.width;
 					h = o->hit.ellipse.height;
-					cairo_get_matrix(cr, &m);
+					cairo_get_matrix(cr, (cairo_matrix_t *)(&m));
 					cairo_translate(cr, x, y);
 					cairo_scale(cr, 1, h / w);
 					cairo_translate(cr, -x, -y);
@@ -1321,14 +1975,14 @@ static int m_draw(lua_State * L)
 					cairo_move_to(cr, x + w, y);
 					cairo_arc(cr, x, y, w, 0, M_PI * 2);
 					cairo_close_path(cr);
-					cairo_set_matrix(cr, &m);
+					cairo_set_matrix(cr, (cairo_matrix_t *)(&m));
 					break;
 				case COLLIDER_TYPE_RECTANGLE:
 					cairo_new_sub_path(cr);
 					cairo_rectangle(cr, o->hit.rectangle.x, o->hit.rectangle.y, o->hit.rectangle.width, o->hit.rectangle.height);
 					cairo_close_path(cr);
 					break;
-				case COLLIDER_TYPE_ROUND_RECTANGLE:
+				case COLLIDER_TYPE_ROUNDED_RECTANGLE:
 					x = o->hit.rounded_rectangle.x;
 					y = o->hit.rounded_rectangle.y;
 					w = o->hit.rounded_rectangle.width;
@@ -1365,92 +2019,95 @@ static int m_draw(lua_State * L)
 			}
 			cairo_restore(cr);
 		}
+
+		list_for_each_entry(pos, &o->children, entry)
+		{
+			dobject_draw(pos, disp);
+		}
 	}
+}
+
+static int m_render(lua_State * L)
+{
+	struct ldobject_t * o = luaL_checkudata(L, 1, MT_DOBJECT);
+	struct display_t * disp = luaL_checkudata(L, 2, MT_DISPLAY);
+	display_present(disp, o, (void (*)(void *, struct display_t *))dobject_draw);
 	return 0;
 }
 
 static const luaL_Reg m_dobject[] = {
-	{"__gc",			m_dobject_gc},
-	{"addChild",		m_add_child},
-	{"removeChild",		m_remove_child},
-	{"toFront",			m_to_front},
-	{"toBack",			m_to_back},
-	{"setWidth",		m_set_width},
-	{"getWidth",		m_get_width},
-	{"setHeight",		m_set_height},
-	{"getHeight",		m_get_height},
-	{"setSize",			m_set_size},
-	{"getSize",			m_get_size},
-	{"setX",			m_set_x},
-	{"getX",			m_get_x},
-	{"setY",			m_set_y},
-	{"getY",			m_get_y},
-	{"setPosition",		m_set_position},
-	{"getPosition",		m_get_position},
-	{"setRotation",		m_set_rotation},
-	{"getRotation",		m_get_rotation},
-	{"setScaleX",		m_set_scale_x},
-	{"getScaleX",		m_get_scale_x},
-	{"setScaleY",		m_set_scale_y},
-	{"getScaleY",		m_get_scale_y},
-	{"setScale",		m_set_scale},
-	{"getScale",		m_get_scale},
-	{"setSkewX",		m_set_skew_x},
-	{"getSkewX",		m_get_skew_x},
-	{"setSkewY",		m_set_skew_y},
-	{"getSkewY",		m_get_skew_y},
-	{"setSkew",			m_set_skew},
-	{"getSkew",			m_get_skew},
-	{"setAnchor",		m_set_archor},
-	{"getAnchor",		m_get_archor},
-	{"setAlpha",		m_set_alpha},
-	{"getAlpha",		m_get_alpha},
-	{"setAlignment",	m_set_alignment},
-	{"getAlignment",	m_get_alignment},
-	{"setMargin",		m_set_margin},
-	{"getMargin",		m_get_margin},
-	{"setCollider",		m_set_collider},
-	{"getCollider",		m_get_collider},
-	{"setVisible",		m_set_visible},
-	{"getVisible",		m_get_visible},
-	{"setTouchable",	m_set_touchable},
-	{"getTouchable",	m_get_touchable},
-	{"globalToLocal",	m_global_to_local},
-	{"localToGlobal",	m_local_to_global},
-	{"hitTestPoint",	m_hit_test_point},
-	{"bounds",			m_bounds},
-	{"layout",			m_layout},
-	{"draw",			m_draw},
+	{"__gc",				m_dobject_gc},
+	{"addChild",			m_add_child},
+	{"removeChild",			m_remove_child},
+	{"toFront",				m_to_front},
+	{"toBack",				m_to_back},
+	{"setWidth",			m_set_width},
+	{"getWidth",			m_get_width},
+	{"setHeight",			m_set_height},
+	{"getHeight",			m_get_height},
+	{"setSize",				m_set_size},
+	{"getSize",				m_get_size},
+	{"setX",				m_set_x},
+	{"getX",				m_get_x},
+	{"setY",				m_set_y},
+	{"getY",				m_get_y},
+	{"setPosition",			m_set_position},
+	{"getPosition",			m_get_position},
+	{"setRotation",			m_set_rotation},
+	{"getRotation",			m_get_rotation},
+	{"setScaleX",			m_set_scale_x},
+	{"getScaleX",			m_get_scale_x},
+	{"setScaleY",			m_set_scale_y},
+	{"getScaleY",			m_get_scale_y},
+	{"setScale",			m_set_scale},
+	{"getScale",			m_get_scale},
+	{"setSkewX",			m_set_skew_x},
+	{"getSkewX",			m_get_skew_x},
+	{"setSkewY",			m_set_skew_y},
+	{"getSkewY",			m_get_skew_y},
+	{"setSkew",				m_set_skew},
+	{"getSkew",				m_get_skew},
+	{"setAnchor",			m_set_archor},
+	{"getAnchor",			m_get_archor},
+	{"setAlpha",			m_set_alpha},
+	{"getAlpha",			m_get_alpha},
+	{"setMargin",			m_set_margin},
+	{"getMargin",			m_get_margin},
+	{"setLayoutEnable",		m_set_layout_enable},
+	{"getLayoutEnable",		m_get_layout_enable},
+	{"setLayoutSpecial",	m_set_layout_special},
+	{"getLayoutSpecial",	m_get_layout_special},
+	{"setLayoutDirection",	m_set_layout_direction},
+	{"getLayoutDirection",	m_get_layout_direction},
+	{"setLayoutJustify",	m_set_layout_justify},
+	{"getLayoutJustify",	m_get_layout_justify},
+	{"setLayoutAlign",		m_set_layout_align},
+	{"getLayoutAlign",		m_get_layout_align},
+	{"setLayoutAlignSelf",	m_set_layout_align_self},
+	{"getLayoutAlignSelf",	m_get_layout_align_self},
+	{"setLayoutGrow",		m_set_layout_grow},
+	{"getLayoutGrow",		m_get_layout_grow},
+	{"setLayoutShrink",		m_set_layout_shrink},
+	{"getLayoutShrink",		m_get_layout_shrink},
+	{"setLayoutBasis",		m_set_layout_basis},
+	{"getLayoutBasis",		m_get_layout_basis},
+	{"setCollider",			m_set_collider},
+	{"getCollider",			m_get_collider},
+	{"setVisible",			m_set_visible},
+	{"getVisible",			m_get_visible},
+	{"setTouchable",		m_set_touchable},
+	{"getTouchable",		m_get_touchable},
+	{"globalToLocal",		m_global_to_local},
+	{"localToGlobal",		m_local_to_global},
+	{"hitTestPoint",		m_hit_test_point},
+	{"bounds",				m_bounds},
+	{"render",				m_render},
 	{NULL, NULL}
 };
 
 int luaopen_dobject(lua_State * L)
 {
 	luaL_newlib(L, l_dobject);
-	/* enum alignment_t */
-	luahelper_set_intfield(L, "ALIGN_NONE", 				ALIGN_NONE);
-	luahelper_set_intfield(L, "ALIGN_LEFT", 				ALIGN_LEFT);
-	luahelper_set_intfield(L, "ALIGN_TOP", 					ALIGN_TOP);
-	luahelper_set_intfield(L, "ALIGN_RIGHT", 				ALIGN_RIGHT);
-	luahelper_set_intfield(L, "ALIGN_BOTTOM", 				ALIGN_BOTTOM);
-	luahelper_set_intfield(L, "ALIGN_LEFT_TOP", 			ALIGN_LEFT_TOP);
-	luahelper_set_intfield(L, "ALIGN_RIGHT_TOP", 			ALIGN_RIGHT_TOP);
-	luahelper_set_intfield(L, "ALIGN_LEFT_BOTTOM", 			ALIGN_LEFT_BOTTOM);
-	luahelper_set_intfield(L, "ALIGN_RIGHT_BOTTOM", 		ALIGN_RIGHT_BOTTOM);
-	luahelper_set_intfield(L, "ALIGN_LEFT_CENTER", 			ALIGN_LEFT_CENTER);
-	luahelper_set_intfield(L, "ALIGN_TOP_CENTER", 			ALIGN_TOP_CENTER);
-	luahelper_set_intfield(L, "ALIGN_RIGHT_CENTER", 		ALIGN_RIGHT_CENTER);
-	luahelper_set_intfield(L, "ALIGN_BOTTOM_CENTER",		ALIGN_BOTTOM_CENTER);
-	luahelper_set_intfield(L, "ALIGN_HORIZONTAL_CENTER",	ALIGN_HORIZONTAL_CENTER);
-	luahelper_set_intfield(L, "ALIGN_VERTICAL_CENTER", 		ALIGN_VERTICAL_CENTER);
-	luahelper_set_intfield(L, "ALIGN_CENTER", 				ALIGN_CENTER);
-	luahelper_set_intfield(L, "ALIGN_LEFT_FILL", 			ALIGN_LEFT_FILL);
-	luahelper_set_intfield(L, "ALIGN_TOP_FILL", 			ALIGN_TOP_FILL);
-	luahelper_set_intfield(L, "ALIGN_RIGHT_FILL", 			ALIGN_RIGHT_FILL);
-	luahelper_set_intfield(L, "ALIGN_BOTTOM_FILL", 			ALIGN_BOTTOM_FILL);
-	luahelper_set_intfield(L, "ALIGN_HORIZONTAL_FILL", 		ALIGN_HORIZONTAL_FILL);
-	luahelper_set_intfield(L, "ALIGN_VERTICAL_FILL", 		ALIGN_VERTICAL_FILL);
-	luahelper_set_intfield(L, "ALIGN_CENTER_FILL", 			ALIGN_CENTER_FILL);
 	luahelper_create_metatable(L, MT_DOBJECT, m_dobject);
 	return 1;
 }

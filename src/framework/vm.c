@@ -28,6 +28,7 @@
 
 #include <xfs/xfs.h>
 #include <framework/luahelper.h>
+#include <framework/core/l-application.h>
 #include <framework/core/l-assets.h>
 #include <framework/core/l-class.h>
 #include <framework/core/l-display.h>
@@ -82,6 +83,7 @@ static void luaopen_glblibs(lua_State * L)
 		{ "Timer",					luaopen_timer },
 		{ "Stage",					luaopen_stage },
 		{ "Assets",					luaopen_assets },
+		{ "Application",			luaopen_application },
 		{ NULL,	NULL },
 	};
 	const luaL_Reg * lib;
@@ -308,7 +310,7 @@ static lua_State * l_newstate(void * ud)
 	return L;
 }
 
-static struct vmctx_t * vmctx_alloc(const char * path, const char * fb)
+static struct vmctx_t * vmctx_alloc(const char * path, const char * fb, const char * input)
 {
 	struct vmctx_t * ctx;
 
@@ -319,9 +321,9 @@ static struct vmctx_t * vmctx_alloc(const char * path, const char * fb)
 	if(!ctx)
 		return NULL;
 
-	ctx->xfs = xfs_alloc(path);
+	ctx->xfs = xfs_alloc(path, 1);
 	ctx->disp = display_alloc(fb);
-	ctx->ectx = event_context_alloc();
+	ctx->ectx = event_context_alloc(input);
 	return ctx;
 }
 
@@ -356,7 +358,7 @@ static void vm_task(struct task_t * task, void * data)
 	vmctx_free(ctx);
 }
 
-int vmexec(const char * path, const char * fb)
+int vmexec(const char * path, const char * fb, const char * input)
 {
 	struct task_t * task;
 	struct vmctx_t * ctx;
@@ -364,7 +366,7 @@ int vmexec(const char * path, const char * fb)
 	if(!is_absolute_path(path))
 		return -1;
 
-	ctx = vmctx_alloc(path, fb);
+	ctx = vmctx_alloc(path, fb, input);
 	if(!ctx)
 		return -1;
 

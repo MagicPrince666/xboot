@@ -157,9 +157,9 @@ static int do_tscal(int argc, char ** argv)
 	}
 
 	input = search_input(argv[1]);
-	if(!input || input->type != INPUT_TYPE_TOUCHSCREEN)
+	if(!input)
 	{
-		printf("The input device '%s' is not a touchscreen\r\n", argv[1]);
+		printf("The input device '%s' is not exist\r\n", argv[1]);
 		usage();
 		return -1;
 	}
@@ -196,7 +196,7 @@ static int do_tscal(int argc, char ** argv)
 
 	cairo_draw_point(cr, cal.xfb[index], cal.yfb[index]);
 	cairo_xboot_surface_present(cs, NULL, 0);
-	ectx = event_context_alloc();
+	ectx = event_context_alloc(NULL);
 
 	while(1)
 	{

@@ -2,7 +2,7 @@ local Pattern = Pattern
 
 local function onMouseDown(self, e)
 	if self:hitTestPoint(e.x, e.y) then
-		self:toFront():animate({scalex = self.sx * 1.2, scaley = self.sx * 1.2}, 0.1, "inOutElastic")
+		self:toFront():animate({scalex = self.sx * 1.2, scaley = self.sx * 1.2}, 0.1, "elastic-in-out")
 		self.touchid = -1
 		self.x0 = e.x
 		self.y0 = e.y
@@ -24,7 +24,7 @@ end
 
 local function onMouseUp(self, e)
 	if self.touchid == -1 then
-		self:toFront():animate({scalex = self.sx * 1, scaley = self.sx * 1}, 0.1, "inOutElastic")
+		self:toFront():animate({scalex = self.sx * 1, scaley = self.sx * 1}, 0.1, "elastic-in-out")
 		self.touchid = nil
 		e.stop = true
 	end
@@ -32,7 +32,7 @@ end
 
 local function onTouchBegin(self, e)
 	if self:hitTestPoint(e.x, e.y) then
-		self:toFront():animate({scalex = self.sx * 1.2, scaley = self.sx * 1.2}, 0.1, "inOutElastic")
+		self:toFront():animate({scalex = self.sx * 1.2, scaley = self.sx * 1.2}, 0.1, "elastic-in-out")
 		self.touchid = e.id
 		self.x0 = e.x
 		self.y0 = e.y
@@ -54,7 +54,7 @@ end
 
 local function onTouchEnd(self, e)
 	if self.touchid == e.id then
-		self:toFront():animate({scalex = self.sx * 1, scaley = self.sx * 1}, 0.1, "inOutElastic")
+		self:toFront():animate({scalex = self.sx * 1, scaley = self.sx * 1}, 0.1, "elastic-in-out")
 		self.touchid = nil
 		e.stop = true
 	end
@@ -63,7 +63,7 @@ end
 local sw, sh = stage:getSize()
 
 stage:addChild(DisplayShape.new(sw, sh)
-		:setSource(Pattern.image(assets:loadImage("bg.png")):setExtend(Pattern.EXTEND_REPEAT))
+		:setSource(Pattern.image(assets:loadImage("bg.png")):setExtend("repeat"))
 		:paint())
 
 for i = 1, 10 do
@@ -76,12 +76,12 @@ for i = 1, 10 do
 	img.sy = img:getScaleY()
 	img.r = img:getRotation()
 
-	img:addEventListener(Event.MOUSE_DOWN, onMouseDown)
-	img:addEventListener(Event.MOUSE_MOVE, onMouseMove)
-	img:addEventListener(Event.MOUSE_UP, onMouseUp)
-	img:addEventListener(Event.TOUCH_BEGIN, onTouchBegin)
-	img:addEventListener(Event.TOUCH_MOVE, onTouchMove)
-	img:addEventListener(Event.TOUCH_END, onTouchEnd)
+	img:addEventListener("mouse-down", onMouseDown)
+	img:addEventListener("mouse-move", onMouseMove)
+	img:addEventListener("mouse-up", onMouseUp)
+	img:addEventListener("touch-begin", onTouchBegin)
+	img:addEventListener("touch-move", onTouchMove)
+	img:addEventListener("touch-end", onTouchEnd)
 
 	stage:addChild(img)
 end
